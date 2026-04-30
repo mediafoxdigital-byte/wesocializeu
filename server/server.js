@@ -1002,7 +1002,7 @@ function requireSameOriginForStateChanges(req, res, next) {
   next();
 }
 
-app.use('/api', requireSameOriginForStateChanges);
+// Custom strict origin check removed in favor of robust CORS middleware
 
 function rejectBotTrap(req, res, next) {
   const trap = cleanText(req.body && req.body._gotcha, 120);
