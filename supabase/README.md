@@ -2,6 +2,10 @@
 
 1. Open the Supabase SQL editor for `https://qzwwrvmooyjkghwgtvad.supabase.co`.
 2. Run `schema.sql` once to create the tables, indexes, and public RLS policies.
+   If the project already exists, run `20260430_restrict_public_insert_policies.sql`
+   to replace the older permissive public insert policies.
+   If public pages are loading empty Supabase data, run
+   `20260430_restore_live_public_content.sql` to restore policies and content rows.
 3. Set these environment variables in Vercel and in `server/.env` for local work:
 
 ```env
