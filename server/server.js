@@ -8,6 +8,8 @@ const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
 const dotenv     = require('dotenv');
 const path       = require('path');
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config();
 const fs         = require('fs');
 const crypto     = require('crypto');
 const dns        = require('dns').promises;
@@ -101,8 +103,6 @@ const upload = multer({
     cb(null, true);
   }
 });
-
-dotenv.config();
 
 const app = express();
 app.disable('x-powered-by');
@@ -1055,28 +1055,33 @@ async function sendConfirmationEmail(toEmail, type, name) {
 // ─── API Routes ─────────────────────────────────────────────────────────────
 
 // POST /api/login
-app.post('/api/login', loginLimiter, (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get(username.trim());
-  if (!admin) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  try {
+    const admin = await db.findAdminByUsername(username.trim());
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const valid = bcrypt.compareSync(password, admin.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const csrf = crypto.randomBytes(32).toString('hex');
+    const token = jwt.sign({ id: admin.id, username: admin.username, csrf }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    res.cookie('wsu_token', token, AUTH_COOKIE_OPTIONS);
+    res.cookie('wsu_csrf', csrf, CSRF_COOKIE_OPTIONS);
+
+    return res.json({ success: true, username: admin.username });
+  } catch (err) {
+    console.error('Login DB error:', err.message);
+    return res.status(500).json({ error: 'Login failed' });
   }
-
-  const valid = bcrypt.compareSync(password, admin.password_hash);
-  if (!valid) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  const csrf = crypto.randomBytes(32).toString('hex');
-  const token = jwt.sign({ id: admin.id, username: admin.username, csrf }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-  res.cookie('wsu_token', token, AUTH_COOKIE_OPTIONS);
-  res.cookie('wsu_csrf', csrf, CSRF_COOKIE_OPTIONS);
-
-  return res.json({ success: true, username: admin.username });
 });
 
 // POST /api/logout
@@ -1087,7 +1092,7 @@ app.post('/api/logout', (req, res) => {
 });
 
 // POST /api/leads  — public (contact form submissions)
-app.post('/api/leads', publicFormLimiter, rejectBotTrap, (req, res) => {
+app.post('/api/leads', publicFormLimiter, rejectBotTrap, async (req, res) => {
   try {
     const isBrandApplication = cleanText(req.body.type, 40) === 'brand';
     const name = normalizeRequiredText(req.body.name, 'Full name', 120);
@@ -1098,12 +1103,10 @@ app.post('/api/leads', publicFormLimiter, rejectBotTrap, (req, res) => {
     const service = cleanText(req.body.service, 200);
     const message = cleanText(req.body.message, 2000);
 
-    const result = db.prepare(
-      'INSERT INTO leads (name, email, phone, service, message, company, website) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(name, email, phone, service, message, company, website);
+    const id = await db.createLead({ name, email, phone, service, message, company, website });
 
     sendConfirmationEmail(email, 'brand', name);
-    return res.status(201).json({ success: true, id: result.lastInsertRowid });
+    return res.status(201).json({ success: true, id });
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Invalid lead details' });
   }
@@ -1114,7 +1117,7 @@ function extractLegacyUrl(value) {
   return match ? match[0] : '';
 }
 
-function handleCreatorApplication(req, res) {
+async function handleCreatorApplication(req, res) {
   try {
     const wantsInstagram = /^yes/i.test(cleanText(req.body.has_instagram, 20));
     const wantsYoutube = /^yes/i.test(cleanText(req.body.has_youtube, 20));
@@ -1141,26 +1144,21 @@ function handleCreatorApplication(req, res) {
       return res.status(400).json({ error: 'Add at least one valid Instagram or YouTube link.' });
     }
 
-    const info = db.prepare(
-      `INSERT INTO creator_leads (
-        name, email, phone, dob, gender, pincode, category, language,
-        has_instagram, has_youtube, instagram_url, youtube_url
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
+    const id = await db.createCreatorLead({
       name, email, phone,
-      cleanText(req.body.dob, 30),
-      cleanText(req.body.gender, 30),
-      cleanText(req.body.pincode, 20),
+      dob: cleanText(req.body.dob, 30),
+      gender: cleanText(req.body.gender, 30),
+      pincode: cleanText(req.body.pincode, 20),
       category,
       language,
-      instagramUrl ? 'Yes' : 'No',
-      youtubeUrl ? 'Yes' : 'No',
-      instagramUrl,
-      youtubeUrl
-    );
+      has_instagram: instagramUrl ? 'Yes' : 'No',
+      has_youtube: youtubeUrl ? 'Yes' : 'No',
+      instagram_url: instagramUrl,
+      youtube_url: youtubeUrl
+    });
 
     sendConfirmationEmail(email, 'creator', name);
-    return res.status(201).json({ success: true, id: info.lastInsertRowid });
+    return res.status(201).json({ success: true, id });
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Invalid creator application details' });
   }
@@ -1180,125 +1178,71 @@ app.post('/api/creators', (req, res, next) => {
 });
 
 // GET /api/leads — admin only
-app.get('/api/leads', requireAuth, (req, res) => {
+app.get('/api/leads', requireAuth, async (req, res) => {
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, parseInt(req.query.limit) || 20);
-  const offset = (page - 1) * limit;
   const status = req.query.status || null;
-  const search = req.query.search ? `%${cleanText(req.query.search, 120)}%` : null;
+  const search = req.query.search ? cleanText(req.query.search, 120) : '';
 
-  let query = 'SELECT * FROM leads';
-  let countQuery = 'SELECT COUNT(*) as c FROM leads';
-  const params = [];
-  const countParams = [];
-  const where = [];
-
-  if (status) {
-    where.push('status = ?');
-    params.push(status);
-    countParams.push(status);
+  try {
+    return res.json(await db.listLeads({ page, limit, status, search }));
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch leads' });
   }
-  if (search) {
-    where.push('(name LIKE ? OR email LIKE ? OR phone LIKE ? OR company LIKE ? OR website LIKE ?)');
-    params.push(search, search, search, search, search);
-    countParams.push(search, search, search, search, search);
-  }
-  if (where.length) {
-    const whereClause = ' WHERE ' + where.join(' AND ');
-    query += whereClause;
-    countQuery += whereClause;
-  }
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-  params.push(limit, offset);
-
-  const leads = db.prepare(query).all(...params);
-  const total = db.prepare(countQuery).get(...countParams).c;
-
-  return res.json({ leads, total, page, limit });
 });
 
 // PATCH /api/leads/:id  — update status
-app.patch('/api/leads/:id', requireAuth, (req, res) => {
+app.patch('/api/leads/:id', requireAuth, async (req, res) => {
   const { status } = req.body;
   const allowed = ['new', 'contacted', 'converted', 'closed'];
   if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-  db.prepare('UPDATE leads SET status = ? WHERE id = ?').run(status, req.params.id);
-  return res.json({ success: true });
+  try {
+    await db.updateLeadStatus(req.params.id, status);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update lead' });
+  }
 });
 
 // DELETE /api/leads/:id
-app.delete('/api/leads/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM leads WHERE id = ?').run(req.params.id);
-  return res.json({ success: true });
+app.delete('/api/leads/:id', requireAuth, async (req, res) => {
+  try {
+    await db.deleteLead(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete lead' });
+  }
 });
 
 // GET /api/creators/leads — admin only
-app.get('/api/creators/leads', requireAuth, (req, res) => {
+app.get('/api/creators/leads', requireAuth, async (req, res) => {
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, parseInt(req.query.limit) || 20);
-  const offset = (page - 1) * limit;
   const search = cleanText(req.query.search, 120);
 
   try {
-    const where = search ? `WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR category LIKE ?` : '';
-    const searchParam = `%${search}%`;
-    const totalCount = search
-      ? db.prepare(`SELECT COUNT(*) as c FROM creator_leads ${where}`).get(searchParam, searchParam, searchParam, searchParam).c
-      : db.prepare('SELECT COUNT(*) as c FROM creator_leads').get().c;
-    const leads = search
-      ? db.prepare(`SELECT * FROM creator_leads ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).all(searchParam, searchParam, searchParam, searchParam, limit, offset)
-      : db.prepare('SELECT * FROM creator_leads ORDER BY id DESC LIMIT ? OFFSET ?').all(limit, offset);
-
-    res.json({
-      data: leads,
-      pagination: {
-        total: totalCount,
-        page: page,
-        limit: limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
-    });
+    res.json(await db.listCreatorLeads({ page, limit, search }));
   } catch (err) { res.status(500).json({ error: 'Failed to fetch creator leads' }); }
 });
 
 // DELETE /api/creators/leads/:id
-app.delete('/api/creators/leads/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM creator_leads WHERE id = ?').run(req.params.id);
-  return res.json({ success: true });
+app.delete('/api/creators/leads/:id', requireAuth, async (req, res) => {
+  try {
+    await db.deleteCreatorLead(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete creator lead' });
+  }
 });
 
 // GET /api/stats
-app.get('/api/stats', requireAuth, (req, res) => {
-  const brandTotal = db.prepare("SELECT COUNT(*) as c FROM leads").get().c;
-  const creatorTotal = db.prepare("SELECT COUNT(*) as c FROM creator_leads").get().c;
-  const total = brandTotal + creatorTotal;
-
-  const brandToday = db.prepare("SELECT COUNT(*) as c FROM leads WHERE date(created_at) = date('now')").get().c;
-  const creatorToday = db.prepare("SELECT COUNT(*) as c FROM creator_leads WHERE date(created_at) = date('now')").get().c;
-  const today = brandToday + creatorToday;
-
-  const newLeads = db.prepare("SELECT COUNT(*) as c FROM leads WHERE status = 'new'").get().c;
-  const converted = db.prepare("SELECT COUNT(*) as c FROM leads WHERE status = 'converted'").get().c;
-
-  // Last 7 days chart data combined
-  const chart = db.prepare(`
-    SELECT day, SUM(count) as count FROM (
-      SELECT date(created_at) as day, COUNT(*) as count
-      FROM leads
-      WHERE created_at >= date('now', '-6 days')
-      GROUP BY date(created_at)
-      UNION ALL
-      SELECT date(created_at) as day, COUNT(*) as count
-      FROM creator_leads
-      WHERE created_at >= date('now', '-6 days')
-      GROUP BY date(created_at)
-    )
-    GROUP BY day
-    ORDER BY day ASC
-  `).all();
-
-  return res.json({ total, today, newLeads, converted, brandTotal, creatorTotal, chart });
+app.get('/api/stats', requireAuth, async (req, res) => {
+  try {
+    return res.json(await db.getStats());
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 });
 
 // GET /api/auth/check — verify session for admin pages
@@ -1307,9 +1251,9 @@ app.get('/api/auth/check', requireAuth, (req, res) => {
 });
 
 // GET /api/public/videos — serve videos directly to frontend
-app.get('/api/public/videos', (req, res) => {
+app.get('/api/public/videos', async (req, res) => {
   try {
-    const videos = db.prepare('SELECT * FROM ugc_videos ORDER BY id DESC').all().map(sanitizeVideoRecord);
+    const videos = (await db.listVideos()).map(sanitizeVideoRecord);
     res.json(videos);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch videos' });
@@ -1317,9 +1261,9 @@ app.get('/api/public/videos', (req, res) => {
 });
 
 // GET /api/videos (Admin)
-app.get('/api/videos', requireAuth, (req, res) => {
+app.get('/api/videos', requireAuth, async (req, res) => {
   try {
-    const videos = db.prepare('SELECT * FROM ugc_videos ORDER BY id DESC').all().map(sanitizeVideoRecord);
+    const videos = (await db.listVideos()).map(sanitizeVideoRecord);
     res.json(videos);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch videos' });
@@ -1327,32 +1271,43 @@ app.get('/api/videos', requireAuth, (req, res) => {
 });
 
 // POST /api/videos (Admin)
-app.post('/api/videos', requireAuth, (req, res) => {
+app.post('/api/videos', requireAuth, async (req, res) => {
   const v = sanitizeVideoRecord(req.body);
   if (!v.title) return res.status(400).json({ error: 'Title required' });
   if (!v.thumbnail_url && !v.video_url) return res.status(400).json({ error: 'Upload a thumbnail or video before saving' });
   try {
-    const info = db.prepare(`
-      INSERT INTO ugc_videos (badge, thumbnail_url, video_url, title, category, likes_count, comments_count, visit_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(v.badge, v.thumbnail_url, v.video_url, v.title, v.category || 'UGC', v.likes_count || 0, v.comments_count || 0, v.visit_url);
-    res.json({ success: true, id: info.lastInsertRowid });
+    const id = await db.createVideo({
+      badge: v.badge,
+      thumbnail_url: v.thumbnail_url,
+      video_url: v.video_url,
+      title: v.title,
+      category: v.category || 'UGC',
+      likes_count: v.likes_count || 0,
+      comments_count: v.comments_count || 0,
+      visit_url: v.visit_url
+    });
+    res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create video' });
   }
 });
 
 // PUT /api/videos/:id (Admin)
-app.put('/api/videos/:id', requireAuth, (req, res) => {
+app.put('/api/videos/:id', requireAuth, async (req, res) => {
   const v = sanitizeVideoRecord(req.body);
   if (!v.title) return res.status(400).json({ error: 'Title required' });
   if (!v.thumbnail_url && !v.video_url) return res.status(400).json({ error: 'Upload a thumbnail or video before saving' });
   try {
-    db.prepare(`
-      UPDATE ugc_videos 
-      SET badge=?, thumbnail_url=?, video_url=?, title=?, category=?, likes_count=?, comments_count=?, visit_url=?
-      WHERE id=?
-    `).run(v.badge, v.thumbnail_url, v.video_url, v.title, v.category, v.likes_count, v.comments_count, v.visit_url, req.params.id);
+    await db.updateVideo(req.params.id, {
+      badge: v.badge,
+      thumbnail_url: v.thumbnail_url,
+      video_url: v.video_url,
+      title: v.title,
+      category: v.category,
+      likes_count: v.likes_count,
+      comments_count: v.comments_count,
+      visit_url: v.visit_url
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update failed' });
@@ -1360,9 +1315,9 @@ app.put('/api/videos/:id', requireAuth, (req, res) => {
 });
 
 // DELETE /api/videos/:id (Admin)
-app.delete('/api/videos/:id', requireAuth, (req, res) => {
+app.delete('/api/videos/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM ugc_videos WHERE id=?').run(req.params.id);
+    await db.deleteVideo(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Delete failed' });
@@ -1372,9 +1327,9 @@ app.delete('/api/videos/:id', requireAuth, (req, res) => {
 // ─── Creators API  ──────────────────────────────────────────────────────────
 
 // GET /api/public/creators — serve creators directly to frontend
-app.get('/api/public/creators', (req, res) => {
+app.get('/api/public/creators', async (req, res) => {
   try {
-    const creators = db.prepare('SELECT * FROM creators ORDER BY id DESC').all().map(sanitizeCreatorRecord);
+    const creators = (await db.listCreators()).map(sanitizeCreatorRecord);
     res.json(creators);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch creators' });
@@ -1382,9 +1337,9 @@ app.get('/api/public/creators', (req, res) => {
 });
 
 // GET /api/creators (Admin)
-app.get('/api/creators', requireAuth, (req, res) => {
+app.get('/api/creators', requireAuth, async (req, res) => {
   try {
-    const creators = db.prepare('SELECT * FROM creators ORDER BY id DESC').all().map(sanitizeCreatorRecord);
+    const creators = (await db.listCreators()).map(sanitizeCreatorRecord);
     res.json(creators);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch creators' });
@@ -1392,15 +1347,19 @@ app.get('/api/creators', requireAuth, (req, res) => {
 });
 
 // POST /api/creators (Admin)
-app.post('/api/creators', requireAuth, (req, res) => {
+app.post('/api/creators', requireAuth, async (req, res) => {
   const c = sanitizeCreatorRecord(req.body);
   if (!c.name) return res.status(400).json({ error: 'Name required' });
   try {
-    const info = db.prepare(`
-      INSERT INTO creators (name, category, platform, followers, image_url, profile_url)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(c.name, c.category || 'Top Creators', c.platform || 'Instagram', c.followers || '', c.image_url || '', c.profile_url || '');
-    res.json({ success: true, id: info.lastInsertRowid });
+    const id = await db.createCreator({
+      name: c.name,
+      category: c.category || 'Top Creators',
+      platform: c.platform || 'Instagram',
+      followers: c.followers || '',
+      image_url: c.image_url || '',
+      profile_url: c.profile_url || ''
+    });
+    res.json({ success: true, id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create creator' });
@@ -1408,15 +1367,18 @@ app.post('/api/creators', requireAuth, (req, res) => {
 });
 
 // PUT /api/creators/:id (Admin)
-app.put('/api/creators/:id', requireAuth, (req, res) => {
+app.put('/api/creators/:id', requireAuth, async (req, res) => {
   const c = sanitizeCreatorRecord(req.body);
   if (!c.name) return res.status(400).json({ error: 'Name required' });
   try {
-    db.prepare(`
-      UPDATE creators 
-      SET name=?, category=?, platform=?, followers=?, image_url=?, profile_url=?
-      WHERE id=?
-    `).run(c.name, c.category, c.platform, c.followers, c.image_url, c.profile_url, req.params.id);
+    await db.updateCreator(req.params.id, {
+      name: c.name,
+      category: c.category,
+      platform: c.platform,
+      followers: c.followers,
+      image_url: c.image_url,
+      profile_url: c.profile_url
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update failed' });
@@ -1424,9 +1386,9 @@ app.put('/api/creators/:id', requireAuth, (req, res) => {
 });
 
 // DELETE /api/creators/:id (Admin)
-app.delete('/api/creators/:id', requireAuth, (req, res) => {
+app.delete('/api/creators/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM creators WHERE id=?').run(req.params.id);
+    await db.deleteCreator(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Delete failed' });
@@ -1435,48 +1397,48 @@ app.delete('/api/creators/:id', requireAuth, (req, res) => {
 
 // ─── Categories & Platforms API ─────────────────────────────────────────────
 
-app.get('/api/categories', requireAuth, (req, res) => {
+app.get('/api/categories', requireAuth, async (req, res) => {
   try {
-    const cats = db.prepare('SELECT * FROM creator_categories ORDER BY id ASC').all();
+    const cats = await db.listCategories();
     res.json(cats);
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
-app.post('/api/categories', requireAuth, (req, res) => {
+app.post('/api/categories', requireAuth, async (req, res) => {
   try {
     const name = cleanText(req.body.name, 80);
     if (!name) return res.status(400).json({ error: 'Name required' });
-    const info = db.prepare('INSERT INTO creator_categories (name) VALUES (?)').run(name);
-    res.json({ success: true, id: info.lastInsertRowid });
+    const id = await db.createCategory(name);
+    res.json({ success: true, id });
   } catch (err) { res.status(500).json({ error: 'Failed or duplicate' }); }
 });
 
-app.delete('/api/categories/:id', requireAuth, (req, res) => {
+app.delete('/api/categories/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM creator_categories WHERE id=?').run(req.params.id);
+    await db.deleteCategory(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
-app.get('/api/platforms', requireAuth, (req, res) => {
+app.get('/api/platforms', requireAuth, async (req, res) => {
   try {
-    const plats = db.prepare('SELECT * FROM creator_platforms ORDER BY id ASC').all();
+    const plats = await db.listPlatforms();
     res.json(plats);
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
-app.post('/api/platforms', requireAuth, (req, res) => {
+app.post('/api/platforms', requireAuth, async (req, res) => {
   try {
     const name = cleanText(req.body.name, 80);
     if (!name) return res.status(400).json({ error: 'Name required' });
-    const info = db.prepare('INSERT INTO creator_platforms (name) VALUES (?)').run(name);
-    res.json({ success: true, id: info.lastInsertRowid });
+    const id = await db.createPlatform(name);
+    res.json({ success: true, id });
   } catch (err) { res.status(500).json({ error: 'Failed or duplicate' }); }
 });
 
-app.delete('/api/platforms/:id', requireAuth, (req, res) => {
+app.delete('/api/platforms/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM creator_platforms WHERE id=?').run(req.params.id);
+    await db.deletePlatform(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
@@ -1596,202 +1558,144 @@ app.get('/api/proxy-image', proxyImageLimiter, async (req, res) => {
 });
 
 // ─── Blogs API ──────────────────────────────────────────────────────────────
-app.get('/api/blogs', (req, res) => {
+app.get('/api/blogs', async (req, res) => {
   try {
-    const blogs = db.prepare('SELECT * FROM blogs ORDER BY order_idx ASC').all().map(sanitizeBlogRecord);
+    const blogs = (await db.listBlogs()).map(sanitizeBlogRecord);
     res.json(blogs);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/blogs/:id', (req, res) => {
+app.get('/api/blogs/:id', async (req, res) => {
   try {
-    const blog = db.prepare('SELECT * FROM blogs WHERE id = ?').get(req.params.id);
+    const blog = await db.getBlogById(req.params.id);
     if (!blog) return res.status(404).json({ error: 'Not found' });
     res.json(sanitizeBlogRecord(blog));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/blogs', requireAuth, (req, res) => {
+app.post('/api/blogs', requireAuth, async (req, res) => {
   const payload = sanitizeBlogRecord(req.body);
   if (!payload.title) return res.status(400).json({ error: 'Title required' });
   try {
-    const countRow = db.prepare('SELECT COUNT(*) as count FROM blogs').get();
-    const count = countRow.count;
-    const requestedSlot = parseInteger(payload.order_idx, count + 1, 1, count + 1);
-    
-    // Shift others
-    db.prepare('UPDATE blogs SET order_idx = order_idx + 1 WHERE order_idx >= ?').run(requestedSlot);
-    
-    const info = db.prepare('INSERT INTO blogs (title, image_url, excerpt, body, link_url, date_text, is_featured, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      payload.title, payload.image_url, payload.excerpt, payload.body, payload.link_url, payload.date_text, payload.is_featured, requestedSlot
-    );
-
-    // Compact
-    const all = db.prepare('SELECT id FROM blogs ORDER BY order_idx ASC, id DESC').all();
-    all.forEach((row, i) => {
-      db.prepare('UPDATE blogs SET order_idx = ? WHERE id = ?').run(i + 1, row.id);
+    const id = await db.createBlog({
+      title: payload.title,
+      image_url: payload.image_url,
+      excerpt: payload.excerpt,
+      body: payload.body,
+      link_url: payload.link_url,
+      date_text: payload.date_text,
+      is_featured: payload.is_featured,
+      order_idx: payload.order_idx
     });
 
-    res.json({ success: true, id: info.lastInsertRowid });
+    res.json({ success: true, id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/blogs/:id', requireAuth, (req, res) => {
+app.put('/api/blogs/:id', requireAuth, async (req, res) => {
   const payload = sanitizeBlogRecord(req.body);
   const id = req.params.id;
   if (!payload.title) return res.status(400).json({ error: 'Title required' });
   
   try {
-    const countRow = db.prepare('SELECT COUNT(*) as count FROM blogs').get();
-    const count = countRow.count;
-    const oldRow = db.prepare('SELECT order_idx FROM blogs WHERE id = ?').get(id);
-    if (!oldRow) return res.status(404).json({ error: 'Not found' });
-
-    const oldIdx = oldRow.order_idx;
-    const newIdx = parseInteger(payload.order_idx, oldIdx, 1, count);
-
-    if (newIdx !== oldIdx) {
-      if (newIdx < oldIdx) {
-        db.prepare('UPDATE blogs SET order_idx = order_idx + 1 WHERE order_idx >= ? AND order_idx < ?').run(newIdx, oldIdx);
-      } else {
-        db.prepare('UPDATE blogs SET order_idx = order_idx - 1 WHERE order_idx > ? AND order_idx <= ?').run(oldIdx, newIdx);
-      }
-    }
-
-    db.prepare('UPDATE blogs SET title=?, image_url=?, excerpt=?, body=?, link_url=?, date_text=?, is_featured=?, order_idx=? WHERE id=?')
-      .run(payload.title, payload.image_url, payload.excerpt, payload.body, payload.link_url, payload.date_text, payload.is_featured, newIdx, id);
-
-    // Compact
-    const all = db.prepare('SELECT id FROM blogs ORDER BY order_idx ASC, id DESC').all();
-    all.forEach((row, i) => {
-      db.prepare('UPDATE blogs SET order_idx = ? WHERE id = ?').run(i + 1, row.id);
+    const updated = await db.updateBlog(id, {
+      title: payload.title,
+      image_url: payload.image_url,
+      excerpt: payload.excerpt,
+      body: payload.body,
+      link_url: payload.link_url,
+      date_text: payload.date_text,
+      is_featured: payload.is_featured,
+      order_idx: payload.order_idx
     });
+    if (!updated) return res.status(404).json({ error: 'Not found' });
 
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/blogs/:id', requireAuth, (req, res) => {
+app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM blogs WHERE id = ?').run(req.params.id);
-    // Compact slot numbers after deletion
-    const remaining = db.prepare('SELECT id FROM blogs ORDER BY order_idx ASC, id ASC').all();
-    remaining.forEach((row, i) => db.prepare('UPDATE blogs SET order_idx = ? WHERE id = ?').run(i + 1, row.id));
+    await db.deleteBlog(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Case Studies API ───────────────────────────────────────────────────────
-app.get('/api/case-studies', (req, res) => {
+app.get('/api/case-studies', async (req, res) => {
   try {
-    const cs = db.prepare('SELECT * FROM case_studies ORDER BY order_idx ASC').all().map(sanitizeCaseStudyRecord);
+    const cs = (await db.listCaseStudies()).map(sanitizeCaseStudyRecord);
     res.json(cs);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/case-studies/:id', (req, res) => {
+app.get('/api/case-studies/:id', async (req, res) => {
   try {
-    const cs = db.prepare('SELECT * FROM case_studies WHERE id = ?').get(req.params.id);
+    const cs = await db.getCaseStudyById(req.params.id);
     if (!cs) return res.status(404).json({ error: 'Not found' });
     res.json(sanitizeCaseStudyRecord(cs));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/case-studies', requireAuth, (req, res) => {
+app.post('/api/case-studies', requireAuth, async (req, res) => {
   const payload = sanitizeCaseStudyRecord(req.body);
   if (!payload.title) return res.status(400).json({ error: 'Title required' });
   try {
-    const countRow = db.prepare('SELECT COUNT(*) as count FROM case_studies').get();
-    const count = countRow.count;
-    const requestedSlot = parseInteger(payload.order_idx, count + 1, 1, count + 1);
-    
-    // Shift others to make room
-    db.prepare('UPDATE case_studies SET order_idx = order_idx + 1 WHERE order_idx >= ?').run(requestedSlot);
-    
-    const info = db.prepare('INSERT INTO case_studies (title, image_url, link_url, is_wide, order_idx, excerpt, body) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      payload.title, payload.image_url, payload.link_url, payload.is_wide, requestedSlot, payload.excerpt, payload.body
-    );
-
-    // Compact all slots to ensure no gaps
-    const all = db.prepare('SELECT id FROM case_studies ORDER BY order_idx ASC, id DESC').all();
-    all.forEach((row, i) => {
-      db.prepare('UPDATE case_studies SET order_idx = ? WHERE id = ?').run(i + 1, row.id);
+    const id = await db.createCaseStudy({
+      title: payload.title,
+      image_url: payload.image_url,
+      link_url: payload.link_url,
+      is_wide: payload.is_wide,
+      order_idx: payload.order_idx,
+      excerpt: payload.excerpt,
+      body: payload.body
     });
 
-    res.json({ success: true, id: info.lastInsertRowid });
+    res.json({ success: true, id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/case-studies/:id', requireAuth, (req, res) => {
+app.put('/api/case-studies/:id', requireAuth, async (req, res) => {
   const payload = sanitizeCaseStudyRecord(req.body);
   const id = req.params.id;
   if (!payload.title) return res.status(400).json({ error: 'Title required' });
   
   try {
-    const countRow = db.prepare('SELECT COUNT(*) as count FROM case_studies').get();
-    const count = countRow.count;
-    const oldRow = db.prepare('SELECT order_idx FROM case_studies WHERE id = ?').get(id);
-    if (!oldRow) return res.status(404).json({ error: 'Not found' });
-
-    const oldIdx = oldRow.order_idx;
-    const newIdx = parseInteger(payload.order_idx, oldIdx, 1, count);
-
-    if (newIdx !== oldIdx) {
-      if (newIdx < oldIdx) {
-        // Moving up: shift items in between down
-        db.prepare('UPDATE case_studies SET order_idx = order_idx + 1 WHERE order_idx >= ? AND order_idx < ?').run(newIdx, oldIdx);
-      } else {
-        // Moving down: shift items in between up
-        db.prepare('UPDATE case_studies SET order_idx = order_idx - 1 WHERE order_idx > ? AND order_idx <= ?').run(oldIdx, newIdx);
-      }
-    }
-
-    db.prepare('UPDATE case_studies SET title=?, image_url=?, link_url=?, is_wide=?, order_idx=?, excerpt=?, body=? WHERE id=?')
-      .run(payload.title, payload.image_url, payload.link_url, payload.is_wide, newIdx, payload.excerpt, payload.body, id);
-
-    // Compact all slots to ensure no gaps
-    const all = db.prepare('SELECT id FROM case_studies ORDER BY order_idx ASC, id DESC').all();
-    all.forEach((row, i) => {
-      db.prepare('UPDATE case_studies SET order_idx = ? WHERE id = ?').run(i + 1, row.id);
+    const updated = await db.updateCaseStudy(id, {
+      title: payload.title,
+      image_url: payload.image_url,
+      link_url: payload.link_url,
+      is_wide: payload.is_wide,
+      order_idx: payload.order_idx,
+      excerpt: payload.excerpt,
+      body: payload.body
     });
+    if (!updated) return res.status(404).json({ error: 'Not found' });
 
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/case-studies/:id', requireAuth, (req, res) => {
+app.delete('/api/case-studies/:id', requireAuth, async (req, res) => {
   try {
-    db.prepare('DELETE FROM case_studies WHERE id = ?').run(req.params.id);
-    // Compact slot numbers after deletion
-    const remaining = db.prepare('SELECT id FROM case_studies ORDER BY order_idx ASC, id ASC').all();
-    remaining.forEach((row, i) => db.prepare('UPDATE case_studies SET order_idx = ? WHERE id = ?').run(i + 1, row.id));
+    await db.deleteCaseStudy(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Service Pages API ──────────────────────────────────────────────────────
-app.get('/api/services', (req, res) => {
+app.get('/api/services', async (req, res) => {
   try {
-    const services = db.prepare(`
-      SELECT id, slug, title, icon, hero_title, hero_subheading, cta, sort_order
-      FROM service_pages
-      WHERE is_active = 1
-      ORDER BY sort_order ASC, id ASC
-    `).all().map(sanitizeServiceRecord);
+    const services = (await db.listPublicServices()).map(sanitizeServiceRecord);
     res.json(services);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/services/:slug', (req, res) => {
+app.get('/api/services/:slug', async (req, res) => {
   try {
-    const service = db.prepare(`
-      SELECT *
-      FROM service_pages
-      WHERE slug = ? AND is_active = 1
-      LIMIT 1
-    `).get(req.params.slug);
+    const service = await db.getPublicServiceBySlug(req.params.slug);
 
     if (!service) return res.status(404).json({ error: 'Not found' });
     res.json(sanitizeServiceRecord(service));
@@ -1800,20 +1704,16 @@ app.get('/api/services/:slug', (req, res) => {
   }
 });
 
-app.get('/api/admin/services', requireAuth, (req, res) => {
+app.get('/api/admin/services', requireAuth, async (req, res) => {
   try {
-    const services = db.prepare(`
-      SELECT *
-      FROM service_pages
-      ORDER BY sort_order ASC, id ASC
-    `).all().map(sanitizeServiceRecord);
+    const services = (await db.listAdminServices()).map(sanitizeServiceRecord);
     res.json(services);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/admin/services/:id', requireAuth, (req, res) => {
+app.put('/api/admin/services/:id', requireAuth, async (req, res) => {
   const rawBody = { ...req.body };
   const normalizedHowSteps = normalizeServiceHowSteps(rawBody.how_steps);
   if (normalizedHowSteps.length) {
@@ -1827,57 +1727,30 @@ app.put('/api/admin/services/:id', requireAuth, (req, res) => {
   }
 
   try {
-    db.prepare(`
-      UPDATE service_pages
-      SET title = ?,
-          icon = ?,
-          hero_title = ?,
-          hero_subheading = ?,
-          hero_gallery_images = ?,
-          how_image_url = ?,
-          how_heading = ?,
-          how_subtitle = ?,
-          diff_heading = ?,
-          diff_subtitle = ?,
-          use_cases_subtitle = ?,
-          faq_subtitle = ?,
-          cta_subtitle = ?,
-          how_steps_json = ?,
-          how_we_do_it = ?,
-          what_makes_us_different = ?,
-          use_cases_title = ?,
-          use_cases = ?,
-          cta = ?,
-          sort_order = ?,
-          is_active = ?,
-          is_customized = 1
-      WHERE id = ?
-    `).run(
-      payload.title,
-      payload.icon,
-      payload.hero_title,
-      payload.hero_subheading,
-      JSON.stringify(payload.hero_gallery_images || []),
-      payload.how_image_url,
-      payload.how_heading,
-      payload.how_subtitle,
-      payload.diff_heading,
-      payload.diff_subtitle,
-      payload.use_cases_subtitle,
-      payload.faq_subtitle,
-      payload.cta_subtitle,
-      payload.how_steps_json,
-      payload.how_we_do_it,
-      payload.what_makes_us_different,
-      payload.use_cases_title,
-      payload.use_cases,
-      payload.cta,
-      payload.sort_order,
-      payload.is_active,
-      req.params.id
-    );
-
-    const updatedService = db.prepare('SELECT * FROM service_pages WHERE id = ?').get(req.params.id);
+    const updatedService = await db.updateService(req.params.id, {
+      title: payload.title,
+      icon: payload.icon,
+      hero_title: payload.hero_title,
+      hero_subheading: payload.hero_subheading,
+      hero_gallery_images: JSON.stringify(payload.hero_gallery_images || []),
+      how_image_url: payload.how_image_url,
+      how_heading: payload.how_heading,
+      how_subtitle: payload.how_subtitle,
+      diff_heading: payload.diff_heading,
+      diff_subtitle: payload.diff_subtitle,
+      use_cases_subtitle: payload.use_cases_subtitle,
+      faq_subtitle: payload.faq_subtitle,
+      cta_subtitle: payload.cta_subtitle,
+      how_steps_json: payload.how_steps_json,
+      how_we_do_it: payload.how_we_do_it,
+      what_makes_us_different: payload.what_makes_us_different,
+      use_cases_title: payload.use_cases_title,
+      use_cases: payload.use_cases,
+      cta: payload.cta,
+      sort_order: payload.sort_order,
+      is_active: payload.is_active
+    });
+    if (!updatedService) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, service: sanitizeServiceRecord(updatedService) });
   } catch (err) {
     res.status(500).json({ error: err.message });
