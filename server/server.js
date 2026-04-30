@@ -22,8 +22,12 @@ const db         = require('./db');
 const { uploadToSupabaseStorage } = require('./supabase');
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create uploads directory (expected on Vercel):', err.message);
 }
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg',
@@ -76,8 +80,15 @@ const SENSITIVE_PATH_PATTERNS = [
 const SAFE_HTML_TAGS = new Set(['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'blockquote', 'a', 'div', 'img']);
 function isUploadMetadataAllowed(file, allowedMimeTypes, allowedExtensions) {
   const mime = String(file.mimetype || '').toLowerCase();
-  const ext = path.extname(file.originalname || file.filename || '').toLowerCase();
+  let ext = path.extname(file.originalname || file.filename || '').toLowerCase();
+  
   const extensionsForMime = UPLOAD_MIME_EXTENSIONS.get(mime);
+  
+  if (!ext && extensionsForMime) {
+    // Fallback to the first valid extension for this MIME type
+    ext = Array.from(extensionsForMime)[0];
+  }
+
   return Boolean(
     allowedMimeTypes.has(mime) &&
     allowedExtensions.has(ext) &&

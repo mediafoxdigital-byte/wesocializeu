@@ -15,11 +15,30 @@ if (supabaseUrl && supabaseKey) {
   console.warn('[SUPABASE] Missing environment variables for storage. Uploads will fail.');
 }
 
+async function ensureBucketExists(bucketName) {
+  const { data: buckets, error } = await supabase.storage.listBuckets();
+  if (error) {
+    console.error('Error listing buckets:', error);
+    return;
+  }
+  
+  if (!buckets.find(b => b.name === bucketName)) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, { public: true });
+    if (createError) {
+      console.error('Error creating bucket:', createError);
+    }
+  } else {
+    // Force bucket to be public if it already exists
+    await supabase.storage.updateBucket(bucketName, { public: true });
+  }
+}
+
 async function uploadToSupabaseStorage(buffer, mimetype, originalName) {
   if (!supabase) throw new Error('Supabase client not configured');
 
-  // We are going to use the 'uploads' bucket by default.
   const bucketName = 'uploads';
+  await ensureBucketExists(bucketName);
+
   const ext = originalName ? (originalName.match(/\.[^.]+$/) || [''])[0].toLowerCase() : '';
   const fileName = `${Date.now()}-${crypto.randomUUID()}${ext || (mimetype.startsWith('video/') ? '.mp4' : '.jpg')}`;
 
