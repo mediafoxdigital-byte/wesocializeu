@@ -1904,8 +1904,12 @@ app.use((req, res) => {
 });
 
 // ─── Start Server ───────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🚀 WeSocializeU server running at http://localhost:${PORT}`);
-  console.log(`   Admin panel: http://localhost:${PORT}/admin/login.html`);
-  console.log(`   Homepage:    http://localhost:${PORT}/\n`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 WeSocializeU server running at http://localhost:${PORT}`);
+    console.log(`   Admin panel: http://localhost:${PORT}/admin/login.html`);
+    console.log(`   Homepage:    http://localhost:${PORT}/\n`);
+  });
+}
+
+module.exports = app;
