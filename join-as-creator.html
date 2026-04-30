@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeSocializeU - CREATOR NETWORK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23F5A623'/><text y='22' x='5' font-family='Arial' font-weight='900' font-size='18' fill='white'>W</text></svg>">
+  <style>
+    /* Absolute Premium Redesign */
+    body { background: #f8fafc; overflow-x: hidden; }
+    
+    /* Animated Ambient Orbs */
+    .ambient-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #f8fafc; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.15; animation: float 15s ease-in-out infinite alternate; }
+    .orb-1 { width: 600px; height: 600px; top: -100px; left: -200px; background: #F5A623; }
+    .orb-2 { width: 500px; height: 500px; bottom: -10vw; right: -10vw; background: #FFD580; animation-delay: -5s; }
+    @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 40px) scale(1.1); } }
+
+    /* Layout structure */
+    .prem-layout { min-height: 100vh; padding-top: var(--nav-height, 80px); display: flex; align-items: center; justify-content: center; max-width: 1400px; margin: 0 auto; padding-inline: 4vw; gap: 6vw; }
+    
+    /* Left Panel: High Impact Typography */
+    .prem-info { flex: 1; max-width: 580px; padding-block: 8vh; }
+    .prem-badge { display: inline-block; padding: 6px 16px; background: rgba(245, 166, 35, 0.12); color: #e18c09; font-family: var(--font-heading, "Montserrat", sans-serif); font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; border-radius: 100px; margin-bottom: 24px; border: 1px solid rgba(245, 166, 35, 0.2); animation: fadeUp 0.8s ease forwards; opacity: 0; transform: translateY(20px); }
+    .prem-title { font-family: var(--font-heading, "Montserrat", sans-serif); font-size: clamp(40px, 4.5vw, 64px); font-weight: 900; color: #0F172A; line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 24px; animation: fadeUp 0.8s ease forwards 0.1s; opacity: 0; transform: translateY(20px); }
+    .prem-title span { color: #F5A623; display: inline-block; }
+    .prem-sub { font-family: var(--font-body, "Montserrat", sans-serif); font-size: 17px; line-height: 1.7; color: #475569; margin-bottom: 40px; animation: fadeUp 0.8s ease forwards 0.2s; opacity: 0; transform: translateY(20px); }
+    
+    .premium-perks { list-style: none; padding: 0; animation: fadeUp 0.8s ease forwards 0.3s; opacity: 0; transform: translateY(20px); }
+    .premium-perks li { display: flex; align-items: flex-start; gap: 14px; font-family: var(--font-body, "Montserrat", sans-serif); font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
+    .perk-icon { width: 24px; height: 24px; border-radius: 50%; background: #F5A623; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .perk-icon svg { width: 12px; height: 12px; color: #fff; }
+
+    /* Right Panel: Glassmorphic Floating Form */
+    .prem-form-container { flex: 0 0 clamp(400px, 45%, 520px); animation: fadeUp 0.8s ease forwards 0.4s; opacity: 0; transform: translateY(20px); }
+    .prem-card { background: #ffffff; border-radius: 28px; padding: 48px; box-shadow: 0 30px 60px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02); position: relative; z-index: 10; }
+    .prem-card-title { font-family: var(--font-heading, "Montserrat", sans-serif); font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+    .prem-card-sub { font-family: var(--font-body, "Montserrat", sans-serif); font-size: 14px; color: #64748b; margin-bottom: 32px; }
+
+    /* Inputs */
+    .prem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .prem-col-2 { grid-column: 1 / -1; }
+    .prem-fld { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .prem-fld label { font-family: var(--font-heading, "Montserrat", sans-serif); font-size: 13px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px; }
+    .prem-fld .req { color: #ef4444; }
+    
+    .prem-fld input, .prem-fld textarea, .prem-select select { width: 100%; box-sizing: border-box; background: #f8fafc; border: 1.5px solid #e2e8f0; padding: 14px 18px; border-radius: 12px; font-family: var(--font-body, "Montserrat", sans-serif); font-size: 15px; color: #0f172a; transition: all 0.25s ease; outline: none; -webkit-appearance: none; }
+    .prem-fld input:focus, .prem-fld textarea:focus, .prem-select select:focus { background: #fff; border-color: #F5A623; box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.1); }
+    .prem-fld input.err, .prem-fld textarea.err, .prem-select select.err { border-color: #ef4444; background: #fef2f2; }
+    .prem-fld textarea { min-height: 100px; resize: vertical; }
+    
+    .prem-select { position: relative; }
+    .prem-select svg { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; pointer-events: none; color: #64748b; }
+
+    /* Interactive Chips */
+    .prem-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+    .prem-chip { background: #f1f5f9; border: 1.5px solid transparent; color: #475569; padding: 8px 18px; border-radius: 100px; font-family: var(--font-body, "Montserrat", sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
+    .prem-chip:hover { background: #e2e8f0; }
+    .prem-chip.on { background: rgba(245,166,35,0.1); border-color: #F5A623; color: #d68f18; font-weight: 700; }
+
+    /* Submit CTA */
+    .prem-submit-btn { width: 100%; padding: 18px; border-radius: 12px; border: none; background: #F5A623; color: #ffffff; font-family: var(--font-heading, "Montserrat", sans-serif); font-size: 16px; font-weight: 800; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 24px rgba(245,166,35,0.25); outline: none; margin-top: 10px; }
+    .prem-submit-btn:hover { background: #e08c10; transform: translateY(-2px); box-shadow: 0 14px 32px rgba(245,166,35,0.35); }
+    .prem-submit-btn:active { transform: translateY(0); }
+    .prem-submit-btn:disabled { opacity: 0.6; cursor: wait; pointer-events: none; transform: none; box-shadow: none; }
+
+    /* Success State */
+    .prem-success { display: none; flex-direction: column; align-items: center; text-align: center; padding: 40px 20px; }
+    .prem-success-icon { width: 72px; height: 72px; border-radius: 50%; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .prem-success-icon svg { width: 32px; height: 32px; }
+    .prem-success h3 { font-family: var(--font-heading, "Montserrat", sans-serif); font-size: 26px; font-weight: 900; color: #0f172a; margin-bottom: 12px; }
+    .prem-success p { font-family: var(--font-body, "Montserrat", sans-serif); font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 32px; }
+    .prem-success-btn { display: inline-flex; background: #f1f5f9; color: #0f172a; padding: 14px 32px; border-radius: 100px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
+    .prem-success-btn:hover { background: #e2e8f0; }
+
+    /* Animations */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
+    /* Mobile Responsive */
+    @media (max-width: 1024px) {
+      .prem-layout { flex-direction: column; padding-block: 40px; padding-top: calc(var(--nav-height, 80px) + 20px); gap: 40px; }
+      .prem-info { padding-block: 0; max-width: 100%; text-align: center; }
+      .prem-title { font-size: clamp(36px, 8vw, 42px); }
+      .premium-perks { display: flex; flex-direction: column; align-items: center; }
+      .prem-form-container { width: 100%; flex: auto; }
+      .prem-card { padding: 32px 24px; }
+      .prem-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <link rel="stylesheet" href="/css/mobile-fixes.css">
+</head>
+<body>
+
+<nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar__inner">
+    <a href="/" class="navbar__logo" aria-label="WeSocializeU Home">
+      <img src="/Logo-01-removebg-preview.png" alt="WeSocializeU logo" class="navbar__logo-img">
+      <span class="navbar__logo-text">WESOCIALIZE<span class="navbar__logo-u">U</span></span>
+    </a>
+
+    <div class="navbar__links" role="list">
+      <a href="/" class="navbar__link" role="listitem">Home</a>
+      <!-- Services Dropdown -->
+      <div class="navbar__dropdown-wrap" role="listitem">
+        <button class="navbar__link navbar__dropdown-trigger" aria-haspopup="true" aria-expanded="false" id="servicesDropdownBtn">
+          Services
+          <svg class="navbar__dropdown-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="navbar__dropdown" id="servicesDropdown" role="menu" aria-labelledby="servicesDropdownBtn">
+          <div class="navbar__dropdown-inner">
+          <!-- Decorative top accent -->
+          <div class="navbar__dropdown-accent"></div>
+
+                                                                                                                                                                                                                            <div class="navbar__dropdown-grid">
+          <div class="navbar__dropdown-col">
+            <span class="navbar__dropdown-heading">Brand &amp; Creator Services</span>
+            <a href="/services.html" class="navbar__dropdown-item navbar__dropdown-item--highlight" role="menuitem">
+              <span class="navbar__dropdown-icon">★</span>
+              <span>
+                <strong>All Services</strong>
+                <em>Full portfolio overview</em>
+              </span>
+            </a>
+            <a href="/influencer-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🔥</span>
+              <span>
+                <strong>Influencer Marketing</strong>
+                <em>Influencer Marketing That Actually Drives Results</em>
+              </span>
+            </a>
+            <a href="/content-video-production.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎥</span>
+              <span>
+                <strong>Content &amp; Video Production</strong>
+                <em>Content That Captures Attention—and Keeps It</em>
+              </span>
+            </a>
+            <a href="/campaign-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🚀</span>
+              <span>
+                <strong>Campaign Management</strong>
+                <em>Campaigns That Work as One System</em>
+              </span>
+            </a>
+            <a href="/social-media-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📱</span>
+              <span>
+                <strong>Social Media Management</strong>
+                <em>More Than Content. We Build Communities.</em>
+              </span>
+            </a>
+            <a href="/performance-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📈</span>
+              <span>
+                <strong>Performance Marketing</strong>
+                <em>Performance Marketing That Drives Real Business Growth</em>
+              </span>
+            </a>
+            <a href="/events-experiences.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎤</span>
+              <span>
+                <strong>Events &amp; Experiences</strong>
+                <em>Experiences That People Remember—and Share</em>
+              </span>
+            </a>
+            <a href="/public-relations.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎤</span>
+              <span>
+                <strong>Public Relations (PR)</strong>
+                <em>Build Perception. Build Credibility. Build Trust.</em>
+              </span>
+            </a>
+            <a href="/creator-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">👥</span>
+              <span>
+                <strong>Creator Management</strong>
+                <em>Building Creators Into Long-Term Assets</em>
+              </span>
+            </a>
+          </div>
+
+          <div class="navbar__dropdown-col">
+            <span class="navbar__dropdown-heading">Growth &amp; Market Services</span>
+            <a href="/ugc-user-generated-content.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📲</span>
+              <span>
+                <strong>UGC (User Generated Content)</strong>
+                <em>Authentic Content That Audiences Trust</em>
+              </span>
+            </a>
+            <a href="/community-building.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">💬</span>
+              <span>
+                <strong>Community Building</strong>
+                <em>From Audience to Loyal Community</em>
+              </span>
+            </a>
+            <a href="/sports-entertainment-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🏏</span>
+              <span>
+                <strong>Sports &amp; Entertainment Marketing</strong>
+                <em>Built for Culture, Not Just Campaigns</em>
+              </span>
+            </a>
+            <a href="/ip-development-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎬</span>
+              <span>
+                <strong>IP Development &amp; Management</strong>
+                <em>Don&#39;t Just Advertise on Culture. Build It.</em>
+              </span>
+            </a>
+            <a href="/sponsorship-brand-partnerships.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🤝</span>
+              <span>
+                <strong>Sponsorship &amp; Brand Partnerships</strong>
+                <em>The Right Partnerships Don&#39;t Just Add Visibility. They Add Value.</em>
+              </span>
+            </a>
+            <a href="/crisis-management-reputation-control.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🛡️</span>
+              <span>
+                <strong>Crisis Management &amp; Reputation Control</strong>
+                <em>When Things Go Wrong, Strategy Matters More Than Speed</em>
+              </span>
+            </a>
+            <a href="/e-commerce-marketplace-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🛒</span>
+              <span>
+                <strong>E-Commerce &amp; Marketplace Management</strong>
+                <em>Visibility is Easy. Conversions Are What Matter.</em>
+              </span>
+            </a>
+            <a href="/email-crm-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📧</span>
+              <span>
+                <strong>Email &amp; CRM Marketing</strong>
+                <em>Growth Doesn&#39;t End at Acquisition</em>
+              </span>
+            </a>
+            <a href="/localization-regional-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🌍</span>
+              <span>
+                <strong>Localization &amp; Regional Marketing</strong>
+                <em>One Message Doesn&#39;t Fit Every Market</em>
+              </span>
+            </a>
+          </div>
+          </div>
+
+          <!-- Footer CTA -->
+          <div class="navbar__dropdown-footer">
+            <p>Not sure where to start?</p>
+            <a href="#contact-form" class="navbar__dropdown-cta">Get a Free Strategy Call →</a>
+          </div><!-- /.navbar__dropdown-footer -->
+          </div><!-- /.navbar__dropdown-inner -->
+        </div><!-- /.navbar__dropdown -->
+      </div><!-- /.navbar__dropdown-wrap -->
+      <a href="/ugc-videos.html" class="navbar__link" role="listitem">UGC Videos</a>
+      <a href="/creators.html" class="navbar__link" role="listitem">Creators</a>
+      <a href="/join-as-brand.html" class="navbar__link" role="listitem">Join As Brand</a>
+      <a href="/join-as-creator.html" class="navbar__link active" role="listitem">Join As Creator</a>
+    </div>
+
+    <div class="navbar__actions">
+      <!-- Message / Chat icon -->
+      <button class="navbar__icon-btn" aria-label="Chat with us">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <a href="#contact-form" class="btn-primary navbar__cta">Get Started</a>
+    </div>
+
+    <!-- Hamburger -->
+    <button class="navbar__hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- Mobile menu -->
+  <div class="navbar__mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
+    <a href="/" class="navbar__mobile-link">Home</a>
+    <!-- Mobile Services Accordion -->
+    <div class="navbar__mobile-accordion">
+      <button class="navbar__mobile-link navbar__mobile-accordion-trigger" aria-expanded="false" id="mobileServicesBtn">
+        Services
+        <svg class="navbar__mobile-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+                                                                                                                                    <div class="navbar__mobile-services" id="mobileServicesMenu">
+        <a href="/services.html" class="navbar__mobile-service-link">★ All Services</a>
+        <a href="/influencer-marketing.html" class="navbar__mobile-service-link">🔥 Influencer Marketing</a>
+        <a href="/content-video-production.html" class="navbar__mobile-service-link">🎥 Content &amp; Video Production</a>
+        <a href="/campaign-management.html" class="navbar__mobile-service-link">🚀 Campaign Management</a>
+        <a href="/social-media-management.html" class="navbar__mobile-service-link">📱 Social Media Management</a>
+        <a href="/performance-marketing.html" class="navbar__mobile-service-link">📈 Performance Marketing</a>
+        <a href="/events-experiences.html" class="navbar__mobile-service-link">🎤 Events &amp; Experiences</a>
+        <a href="/public-relations.html" class="navbar__mobile-service-link">🎤 Public Relations (PR)</a>
+        <a href="/creator-management.html" class="navbar__mobile-service-link">👥 Creator Management</a>
+        <a href="/ugc-user-generated-content.html" class="navbar__mobile-service-link">📲 UGC (User Generated Content)</a>
+        <a href="/community-building.html" class="navbar__mobile-service-link">💬 Community Building</a>
+        <a href="/sports-entertainment-marketing.html" class="navbar__mobile-service-link">🏏 Sports &amp; Entertainment Marketing</a>
+        <a href="/ip-development-management.html" class="navbar__mobile-service-link">🎬 IP Development &amp; Management</a>
+        <a href="/sponsorship-brand-partnerships.html" class="navbar__mobile-service-link">🤝 Sponsorship &amp; Brand Partnerships</a>
+        <a href="/crisis-management-reputation-control.html" class="navbar__mobile-service-link">🛡️ Crisis Management &amp; Reputation Control</a>
+        <a href="/e-commerce-marketplace-management.html" class="navbar__mobile-service-link">🛒 E-Commerce &amp; Marketplace Management</a>
+        <a href="/email-crm-marketing.html" class="navbar__mobile-service-link">📧 Email &amp; CRM Marketing</a>
+        <a href="/localization-regional-marketing.html" class="navbar__mobile-service-link">🌍 Localization &amp; Regional Marketing</a>
+      </div>
+    </div>
+    <a href="/ugc-videos.html" class="navbar__mobile-link">UGC Videos</a>
+    <a href="/creators.html" class="navbar__mobile-link">Creators</a>
+    <a href="/join-as-brand.html" class="navbar__mobile-link">Join As Brand</a>
+    <a href="/join-as-creator.html" class="navbar__mobile-link">Join As Creator</a>
+    <a href="#contact-form" class="btn-primary">Get Started →</a>
+  </div>
+</nav>
+
+<!-- Ambient Background Orbs -->
+<div class="ambient-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<main class="prem-layout">
+  
+  <div class="prem-info">
+    <div class="prem-badge">CREATOR NETWORK</div>
+    <h1 class="prem-title">Elevate Your<br><span>Creator Journey.</span></h1>
+    <p class="prem-sub">Join the WeSocializeU exclusive network. Collaborate with premium brands, monetize your loyal audience, and accelerate your digital growth.</p>
+    
+            <ul class="premium-perks">
+              <li><div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div> High-Paying Brand Collaborations</li>
+              <li><div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div> Dedicated Creator Management</li>
+              <li><div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div> Early Access to Exclusive Events</li>
+            </ul>
+        
+  </div>
+
+  <div class="prem-form-container">
+    <div class="prem-card">
+      <div id="premFormWrap">
+        <h2 class="prem-card-title">Submit Details</h2>
+        <p class="prem-card-sub">Let's build something incredible together.</p>
+        <form id="creatorForm" novalidate>
+          <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+          
+            <div class="prem-grid">
+              <div class="prem-fld"><label>Full Name <span class="req">*</span></label><input type="text" id="cName" name="name" placeholder="Your Name" autocomplete="name" maxlength="120" required></div>
+              <div class="prem-fld"><label>Email Address <span class="req">*</span></label><input type="email" id="cEmail" name="email" placeholder="you@email.com" autocomplete="email" maxlength="254" required></div>
+              <div class="prem-fld"><label>WhatsApp Number <span class="req">*</span></label><input type="tel" id="cPhone" name="phone" placeholder="+91 00000 00000" autocomplete="tel" inputmode="tel" maxlength="20" required></div>
+              <div class="prem-fld">
+                <label>Category <span class="req">*</span></label>
+                <div class="prem-select">
+                  <select id="cCat" name="category" required><option value="">Select Niche...</option><option>Fashion</option><option>Tech</option><option>Lifestyle</option><option>Comedy</option><option>Beauty</option><option>Food</option><option>Travel</option><option>Fitness</option><option>Other</option></select>
+                  <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="prem-fld">
+                <label>Primary Language</label>
+                <div class="prem-select">
+                  <select id="cLang" name="language"><option value="">Select Language...</option><option>English</option><option>Hindi</option><option>Hinglish</option><option>Tamil</option><option>Telugu</option><option>Marathi</option><option>Bengali</option><option>Other</option></select>
+                  <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+              <div class="prem-fld"><label>Instagram Present?</label>
+                <div class="prem-select"><select id="cInsta"><option value="">Select...</option><option>Yes</option><option>No</option></select><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+              </div>
+              <div class="prem-fld prem-col-2" id="instaWrap" style="display:none; animation: scaleIn 0.3s forwards"><label>Instagram Link <span class="req">*</span></label><input type="text" id="cInstaLink" name="instagram_url" placeholder="https://instagram.com/yourusername" inputmode="url" maxlength="500"></div>
+              <div class="prem-fld"><label>YouTube Present?</label>
+                <div class="prem-select"><select id="cYT"><option value="">Select...</option><option>Yes</option><option>No</option></select><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+              </div>
+              <div class="prem-fld prem-col-2" id="ytWrap" style="display:none; animation: scaleIn 0.3s forwards"><label>YouTube Link <span class="req">*</span></label><input type="text" id="cYTLink" name="youtube_url" placeholder="https://youtube.com/@yourchannel" inputmode="url" maxlength="500"></div>
+              
+            </div>
+        
+          <button type="submit" class="prem-submit-btn" id="creatorSubmit">Submit Application →</button>
+        </form>
+      </div>
+
+      <div class="prem-success" id="premSuccess">
+        <div class="prem-success-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <h3>Application Received</h3>
+        <p>Our partnership team has received your details and will be in touch shortly to map out the next steps.</p>
+        <a href="/" class="prem-success-btn">Return to Homepage</a>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script src="/js/main.js"></script>
+<script>
+
+        const cInsta = document.getElementById('cInsta');
+        const cYT = document.getElementById('cYT');
+        const cCat = document.getElementById('cCat');
+        const instaWrap = document.getElementById('instaWrap');
+        const ytWrap = document.getElementById('ytWrap');
+        const iLink = document.getElementById('cInstaLink');
+        const yLink = document.getElementById('cYTLink');
+
+        function markInvalid(input, invalid, msg = 'This field is required.') {
+          input.classList.toggle('err', Boolean(invalid));
+          const parent = input.closest('.prem-fld');
+          if (!parent) return;
+          let errEl = parent.querySelector('.err-msg');
+          if (invalid) {
+            if (!errEl) {
+              errEl = document.createElement('div');
+              errEl.className = 'err-msg';
+              errEl.style.color = '#ef4444';
+              errEl.style.fontSize = '12px';
+              errEl.style.marginTop = '-4px';
+              parent.appendChild(errEl);
+            }
+            errEl.textContent = msg;
+          } else if (errEl) {
+            errEl.remove();
+          }
+        }
+
+        function normalizeSocialUrl(input, allowedHosts, required, platformName) {
+          const raw = input.value.trim();
+          if (!raw) {
+            markInvalid(input, required, 'Please provide your profile link.');
+            return required ? null : '';
+          }
+
+          try {
+            const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+            const host = url.hostname.toLowerCase();
+            const allowed = allowedHosts.some(allowedHost => host === allowedHost || host.endsWith(`.${allowedHost}`));
+            if (!allowed || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+              throw new Error('Invalid URL');
+            }
+            markInvalid(input, false);
+            return url.toString();
+          } catch {
+            markInvalid(input, true, `Please enter a valid ${platformName} URL.`);
+            return null;
+          }
+        }
+
+        cInsta.addEventListener('change', () => {
+          instaWrap.style.display = cInsta.value === 'Yes' ? 'flex' : 'none';
+          if (cInsta.value !== 'Yes') {
+            iLink.value = '';
+            markInvalid(iLink, false);
+          }
+          if (cInsta.value === 'Yes' || cYT.value === 'Yes') {
+            markInvalid(cInsta, false);
+            markInvalid(cYT, false);
+          }
+        });
+        cYT.addEventListener('change', () => {
+          ytWrap.style.display = cYT.value === 'Yes' ? 'flex' : 'none';
+          if (cYT.value !== 'Yes') {
+            yLink.value = '';
+            markInvalid(yLink, false);
+          }
+          if (cInsta.value === 'Yes' || cYT.value === 'Yes') {
+            markInvalid(cInsta, false);
+            markInvalid(cYT, false);
+          }
+        });
+
+        document.getElementById('creatorForm').addEventListener('submit', async e => {
+          e.preventDefault();
+          const n=document.getElementById('cName'), m=document.getElementById('cEmail'), p=document.getElementById('cPhone');
+          let ok=true;
+          
+          const invalidName = n.value.trim().length < 2;
+          markInvalid(n, invalidName, 'This field is required.');
+          if (invalidName) ok = false;
+          
+          const email = m.value.trim().toLowerCase();
+          const invalidEmail = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+          markInvalid(m, invalidEmail, 'Please enter a valid email address.');
+          if (invalidEmail) ok = false;
+          
+          const phoneRaw = p.value.trim();
+          const phoneDigits = phoneRaw.replace(/\D/g, '');
+          const invalidPhone = !/^\+?[0-9][0-9\s().-]{8,24}$/.test(phoneRaw) || phoneDigits.length < 10 || phoneDigits.length > 15;
+          markInvalid(p, invalidPhone, 'Please enter a valid 10-15 digit phone number.');
+          if (invalidPhone) ok = false;
+
+          const invalidCategory = !cCat.value.trim();
+          markInvalid(cCat, invalidCategory, 'Please select a category.');
+          if (invalidCategory) ok = false;
+          
+          const noPlatform = cInsta.value !== 'Yes' && cYT.value !== 'Yes';
+          if (noPlatform) {
+             markInvalid(cInsta, true, 'Select at least one platform.');
+             markInvalid(cYT, true, 'Select at least one platform.');
+             ok = false;
+          } else {
+             markInvalid(cInsta, false);
+             markInvalid(cYT, false);
+          }
+          
+          const instagramUrl = normalizeSocialUrl(iLink, ['instagram.com'], cInsta.value === 'Yes', 'Instagram');
+          const youtubeUrl = normalizeSocialUrl(yLink, ['youtube.com', 'youtu.be'], cYT.value === 'Yes', 'YouTube');
+          if (instagramUrl === null || youtubeUrl === null) ok = false;
+          
+          if(!ok) {
+             return;
+          }
+
+          const btn=document.getElementById('creatorSubmit'); btn.disabled=true; btn.textContent='Submitting application...';
+
+          const payload = {
+            name: n.value.trim(),
+            email,
+            phone: phoneRaw,
+            category: cCat.value,
+            language: document.getElementById('cLang').value,
+            has_instagram: cInsta.value === 'Yes' ? 'Yes' : 'No',
+            has_youtube: cYT.value === 'Yes' ? 'Yes' : 'No',
+            instagram_url: instagramUrl,
+            youtube_url: youtubeUrl,
+            _gotcha: document.querySelector('#creatorForm [name="_gotcha"]')?.value || ''
+          };
+          try{
+            let res=await fetch('/api/creator-applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+            const data = await res.json().catch(() => ({}));
+            if(!res.ok) throw new Error(data.error || 'Failed to send.');
+            document.getElementById('premFormWrap').style.display='none';
+            document.getElementById('premSuccess').style.display='flex';
+          }catch(err){ btn.disabled=false; btn.textContent='Submit Application →'; alert(err.message || 'Failed to send.'); }
+        });
+        
+</script>
+</body>
+</html>

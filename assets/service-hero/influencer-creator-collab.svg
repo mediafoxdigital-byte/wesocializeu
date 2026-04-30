@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 920" role="img" aria-labelledby="title desc">
+  <title id="title">Creator collaboration visual</title>
+  <desc id="desc">A stylized creator profile with campaign and audience signals.</desc>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="49" x2="632" y2="878" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff5df"/>
+      <stop offset=".48" stop-color="#ffe1c2"/>
+      <stop offset="1" stop-color="#fff8f2"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="155" y1="127" x2="581" y2="744" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff9e18"/>
+      <stop offset="1" stop-color="#ff5478"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#92522f" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <rect width="720" height="920" rx="56" fill="url(#bg)"/>
+  <circle cx="614" cy="126" r="92" fill="#fff" opacity=".55"/>
+  <circle cx="112" cy="772" r="120" fill="#fff" opacity=".42"/>
+  <path d="M83 223c108-121 285-146 418-55 113 77 161 222 116 350-47 133-177 216-319 203C152 708 43 604 30 466c-8-87 11-171 53-243Z" fill="#fff" opacity=".42"/>
+  <rect x="92" y="106" width="536" height="708" rx="44" fill="#fff" opacity=".74" filter="url(#shadow)"/>
+  <rect x="126" y="140" width="468" height="146" rx="32" fill="#222932"/>
+  <circle cx="188" cy="213" r="42" fill="url(#coral)"/>
+  <path d="M173 218c7 19 21 29 40 29 18 0 32-11 39-29" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="175" cy="204" r="6" fill="#fff"/>
+  <circle cx="211" cy="204" r="6" fill="#fff"/>
+  <text x="259" y="198" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="#fff">Creator fit</text>
+  <text x="259" y="236" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#d8dee8">Audience match + trust signals</text>
+  <g transform="translate(126 332)">
+    <rect width="214" height="274" rx="34" fill="#fff7ed"/>
+    <rect x="26" y="28" width="162" height="162" rx="30" fill="#ffd3b2"/>
+    <circle cx="107" cy="99" r="46" fill="#854b2f"/>
+    <circle cx="107" cy="111" r="36" fill="#f3ad83"/>
+    <path d="M70 92c15-44 88-50 103 1-21-18-71-17-103-1Z" fill="#4a2d23"/>
+    <path d="M71 213h73" stroke="#222932" stroke-width="16" stroke-linecap="round"/>
+    <path d="M71 244h108" stroke="#ff9e18" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(380 332)">
+    <rect width="214" height="274" rx="34" fill="#eef5ff"/>
+    <path d="M44 212V96" stroke="#c8d9f2" stroke-width="16" stroke-linecap="round"/>
+    <path d="M92 212V63" stroke="#ff5478" stroke-width="16" stroke-linecap="round"/>
+    <path d="M140 212V118" stroke="#ff9e18" stroke-width="16" stroke-linecap="round"/>
+    <path d="M188 212V82" stroke="#175db2" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="56" cy="56" r="20" fill="#fff"/>
+    <circle cx="108" cy="56" r="20" fill="#fff"/>
+    <circle cx="160" cy="56" r="20" fill="#fff"/>
+    <text x="42" y="251" font-family="Arial, sans-serif" font-size="20" font-weight="900" fill="#222932">Live reach</text>
+  </g>
+  <rect x="126" y="650" width="468" height="112" rx="32" fill="url(#coral)"/>
+  <text x="166" y="705" font-family="Arial, sans-serif" font-size="26" font-weight="900" fill="#fff">Creator brief approved</text>
+  <text x="166" y="739" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#fff7ed">Ready for launch and reporting</text>
+  <path d="M531 696h-54m54 0-22-22m22 22-22 22" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

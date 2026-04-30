@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pgTitle">Case Study – WeSocializeU</title>
+  <meta name="description" content="WeSocializeU case study — real influencer marketing results." id="pgDesc">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{--amb:#F5A623;--dark:#0F172A;--mid:#1E293B;--text:#334155;--muted:#64748b;--bdr:#e2e8f0;--bg:#f8fafc;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);}
+    a{text-decoration:none;}
+    img{max-width:100%;}
+
+    /* ── SHARED LOGO ── */
+    
+    
+    
+    
+
+    /* HERO — full-bleed */
+    .hero{position:relative;width:100%;height:clamp(340px,55vh,580px);background:var(--mid);overflow:hidden;}
+    .hero__img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.48);transform:scale(1.04);transition:transform 10s ease-out;}
+    .hero__img.loaded{transform:scale(1);}
+    .hero__overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(15,23,42,.45),rgba(15,23,42,.1) 40%,rgba(15,23,42,.7));}
+    .hero__content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 60px;}
+    .hero__pill{display:inline-flex;align-items:center;gap:7px;background:var(--amb);color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:100px;width:fit-content;margin-bottom:18px;}
+    .hero__title{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(26px,4vw,54px);font-weight:900;color:#fff;line-height:1.15;letter-spacing:-.5px;text-shadow:0 2px 24px rgba(0,0,0,.3);max-width:860px;}
+
+    /* MAIN WRAP */
+    .wrap{max-width:1240px;margin:0 auto;padding:0 20px 80px;}
+
+    /* ARTICLE CARD lifts above hero */
+    .cs-card{background:#fff;border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.09);padding:44px 60px;margin-top:-80px;position:relative;z-index:10;}
+    .cs-section-lbl{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amb);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+    .cs-section-lbl::after{content:'';flex:1;height:1px;background:#fed7aa;}
+    .cs-excerpt{font-size:18px;line-height:1.8;font-style:italic;color:#475569;padding:18px 22px 18px 24px;border-left:4px solid var(--amb);background:#FFFBF2;border-radius:0 12px 12px 0;margin-bottom:32px;}
+    .cs-divider{height:1px;background:var(--bdr);margin:32px 0;}
+    .cs-body-content{font-size:16.5px;line-height:1.9;color:var(--text);}
+    .cs-body-content>*{margin-bottom:22px;}
+    .cs-body-content h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:var(--dark);padding-bottom:8px;border-bottom:2px solid var(--bdr);margin-top:40px;}
+    .cs-body-content h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:var(--dark);margin-top:32px;}
+    .cs-body-content ul,.cs-body-content ol{padding-left:24px;}
+    .cs-body-content li{margin-bottom:8px;}
+    .cs-body-content blockquote{border-left:4px solid var(--amb);padding:16px 22px;background:#FFFBF2;border-radius:0 12px 12px 0;font-style:italic;color:#475569;font-size:17px;}
+    .cs-body-content strong{color:var(--dark);}
+    .cs-body-content a{color:var(--amb);text-decoration:underline;text-underline-offset:3px;}
+    .no-body{text-align:center;padding:56px 20px;background:var(--bg);border-radius:16px;color:var(--muted);}
+    .no-body h3{font-size:18px;color:#475569;margin-bottom:8px;}
+
+    /* CTA strip */
+    .cs-cta{margin-top:48px;background:linear-gradient(135deg,var(--dark),var(--mid));border-radius:18px;padding:36px 40px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+    .cs-cta h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:900;color:#fff;margin-bottom:4px;}
+    .cs-cta p{font-size:13px;color:rgba(255,255,255,.65);}
+    .cs-cta__btn{background:var(--amb);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:700;white-space:nowrap;transition:background .2s,transform .15s;}
+    .cs-cta__btn:hover{background:#e59520;transform:translateY(-1px);}
+
+    /* RELATED SECTION — light */
+    .related{background:#fff;border-top:1px solid var(--bdr);padding:72px 0 80px;}
+    .related-inner{max-width:1240px;margin:0 auto;padding:0 20px;}
+    .related-hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:40px;}
+    .related-hdr h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:900;color:var(--dark);}
+    .related-hdr a{font-size:14px;font-weight:600;color:var(--amb);}
+    .related-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+    @media(max-width:700px){.related-grid{grid-template-columns:1fr;}}
+    .rel-card{border-radius:18px;overflow:hidden;display:block;border:1px solid var(--bdr);background:#fff;transition:transform .25s,box-shadow .25s;}
+    .rel-card:hover{transform:translateY(-5px);box-shadow:0 16px 36px rgba(0,0,0,.09);}
+    .rel-card__thumb{height:180px;background:var(--mid);overflow:hidden;}
+    .rel-card__thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s;}
+    .rel-card:hover .rel-card__thumb img{transform:scale(1.05);}
+    .rel-card__body{padding:20px;}
+    .rel-card__tag{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--amb);margin-bottom:8px;}
+    .rel-card__title{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--dark);line-height:1.35;margin-bottom:12px;}
+    .rel-card__link{font-size:13px;font-weight:700;color:var(--amb);display:flex;align-items:center;gap:5px;}
+
+    /* FOOTER — light */
+
+    /* LOADER */
+    #loadWrap{min-height:60vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+    .spin{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--amb);border-radius:50%;animation:sp .8s linear infinite;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+  </style>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/mobile-fixes.css">
+</head>
+<body>
+
+  <!-- ═══ NAVBAR ════════════════════════════════════════════ -->
+<nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar__inner">
+    <a href="/" class="navbar__logo" aria-label="WeSocializeU Home">
+      <img src="/Logo-01-removebg-preview.png" alt="WeSocializeU logo" class="navbar__logo-img">
+      <span class="navbar__logo-text">WESOCIALIZE<span class="navbar__logo-u">U</span></span>
+    </a>
+
+    <div class="navbar__links" role="list">
+      <a href="/" class="navbar__link active" role="listitem">Home</a>
+      <!-- Services Dropdown -->
+      <div class="navbar__dropdown-wrap" role="listitem">
+        <button class="navbar__link navbar__dropdown-trigger" aria-haspopup="true" aria-expanded="false" id="servicesDropdownBtn">
+          Services
+          <svg class="navbar__dropdown-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="navbar__dropdown" id="servicesDropdown" role="menu" aria-labelledby="servicesDropdownBtn">
+          <div class="navbar__dropdown-inner">
+          <!-- Decorative top accent -->
+          <div class="navbar__dropdown-accent"></div>
+
+                                                                                                                                                                                                                            <div class="navbar__dropdown-grid">
+          <div class="navbar__dropdown-col">
+            <span class="navbar__dropdown-heading">Brand &amp; Creator Services</span>
+            <a href="/services.html" class="navbar__dropdown-item navbar__dropdown-item--highlight" role="menuitem">
+              <span class="navbar__dropdown-icon">★</span>
+              <span>
+                <strong>All Services</strong>
+                <em>Full portfolio overview</em>
+              </span>
+            </a>
+            <a href="/influencer-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🔥</span>
+              <span>
+                <strong>Influencer Marketing</strong>
+                <em>Influencer Marketing That Actually Drives Results</em>
+              </span>
+            </a>
+            <a href="/content-video-production.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎥</span>
+              <span>
+                <strong>Content &amp; Video Production</strong>
+                <em>Content That Captures Attention—and Keeps It</em>
+              </span>
+            </a>
+            <a href="/campaign-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🚀</span>
+              <span>
+                <strong>Campaign Management</strong>
+                <em>Campaigns That Work as One System</em>
+              </span>
+            </a>
+            <a href="/social-media-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📱</span>
+              <span>
+                <strong>Social Media Management</strong>
+                <em>More Than Content. We Build Communities.</em>
+              </span>
+            </a>
+            <a href="/performance-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📈</span>
+              <span>
+                <strong>Performance Marketing</strong>
+                <em>Performance Marketing That Drives Real Business Growth</em>
+              </span>
+            </a>
+            <a href="/events-experiences.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎤</span>
+              <span>
+                <strong>Events &amp; Experiences</strong>
+                <em>Experiences That People Remember—and Share</em>
+              </span>
+            </a>
+            <a href="/public-relations.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎤</span>
+              <span>
+                <strong>Public Relations (PR)</strong>
+                <em>Build Perception. Build Credibility. Build Trust.</em>
+              </span>
+            </a>
+            <a href="/creator-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">👥</span>
+              <span>
+                <strong>Creator Management</strong>
+                <em>Building Creators Into Long-Term Assets</em>
+              </span>
+            </a>
+          </div>
+
+          <div class="navbar__dropdown-col">
+            <span class="navbar__dropdown-heading">Growth &amp; Market Services</span>
+            <a href="/ugc-user-generated-content.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📲</span>
+              <span>
+                <strong>UGC (User Generated Content)</strong>
+                <em>Authentic Content That Audiences Trust</em>
+              </span>
+            </a>
+            <a href="/community-building.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">💬</span>
+              <span>
+                <strong>Community Building</strong>
+                <em>From Audience to Loyal Community</em>
+              </span>
+            </a>
+            <a href="/sports-entertainment-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🏏</span>
+              <span>
+                <strong>Sports &amp; Entertainment Marketing</strong>
+                <em>Built for Culture, Not Just Campaigns</em>
+              </span>
+            </a>
+            <a href="/ip-development-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🎬</span>
+              <span>
+                <strong>IP Development &amp; Management</strong>
+                <em>Don&#39;t Just Advertise on Culture. Build It.</em>
+              </span>
+            </a>
+            <a href="/sponsorship-brand-partnerships.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🤝</span>
+              <span>
+                <strong>Sponsorship &amp; Brand Partnerships</strong>
+                <em>The Right Partnerships Don&#39;t Just Add Visibility. They Add Value.</em>
+              </span>
+            </a>
+            <a href="/crisis-management-reputation-control.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🛡️</span>
+              <span>
+                <strong>Crisis Management &amp; Reputation Control</strong>
+                <em>When Things Go Wrong, Strategy Matters More Than Speed</em>
+              </span>
+            </a>
+            <a href="/e-commerce-marketplace-management.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🛒</span>
+              <span>
+                <strong>E-Commerce &amp; Marketplace Management</strong>
+                <em>Visibility is Easy. Conversions Are What Matter.</em>
+              </span>
+            </a>
+            <a href="/email-crm-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">📧</span>
+              <span>
+                <strong>Email &amp; CRM Marketing</strong>
+                <em>Growth Doesn&#39;t End at Acquisition</em>
+              </span>
+            </a>
+            <a href="/localization-regional-marketing.html" class="navbar__dropdown-item" role="menuitem">
+              <span class="navbar__dropdown-icon">🌍</span>
+              <span>
+                <strong>Localization &amp; Regional Marketing</strong>
+                <em>One Message Doesn&#39;t Fit Every Market</em>
+              </span>
+            </a>
+          </div>
+          </div>
+
+          <!-- Footer CTA -->
+          <div class="navbar__dropdown-footer">
+            <p>Not sure where to start?</p>
+            <a href="#contact-form" class="navbar__dropdown-cta">Get a Free Strategy Call →</a>
+          </div><!-- /.navbar__dropdown-footer -->
+          </div><!-- /.navbar__dropdown-inner -->
+        </div><!-- /.navbar__dropdown -->
+      </div><!-- /.navbar__dropdown-wrap -->
+      <a href="/ugc-videos.html" class="navbar__link" role="listitem">UGC Videos</a>
+      <a href="/creators.html" class="navbar__link" role="listitem">Creators</a>
+      <a href="/join-as-brand.html" class="navbar__link" role="listitem">Join As Brand</a>
+      <a href="/join-as-creator.html" class="navbar__link" role="listitem">Join As Creator</a>
+    </div>
+
+    <div class="navbar__actions">
+      <!-- Message / Chat icon -->
+      <button class="navbar__icon-btn" aria-label="Chat with us">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <a href="#contact-form" class="btn-primary navbar__cta">Get Started</a>
+    </div>
+
+    <!-- Hamburger -->
+    <button class="navbar__hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- Mobile menu -->
+  <div class="navbar__mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
+    <a href="/" class="navbar__mobile-link">Home</a>
+    <!-- Mobile Services Accordion -->
+    <div class="navbar__mobile-accordion">
+      <button class="navbar__mobile-link navbar__mobile-accordion-trigger" aria-expanded="false" id="mobileServicesBtn">
+        Services
+        <svg class="navbar__mobile-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+                                                                                                                                    <div class="navbar__mobile-services" id="mobileServicesMenu">
+        <a href="/services.html" class="navbar__mobile-service-link">★ All Services</a>
+        <a href="/influencer-marketing.html" class="navbar__mobile-service-link">🔥 Influencer Marketing</a>
+        <a href="/content-video-production.html" class="navbar__mobile-service-link">🎥 Content &amp; Video Production</a>
+        <a href="/campaign-management.html" class="navbar__mobile-service-link">🚀 Campaign Management</a>
+        <a href="/social-media-management.html" class="navbar__mobile-service-link">📱 Social Media Management</a>
+        <a href="/performance-marketing.html" class="navbar__mobile-service-link">📈 Performance Marketing</a>
+        <a href="/events-experiences.html" class="navbar__mobile-service-link">🎤 Events &amp; Experiences</a>
+        <a href="/public-relations.html" class="navbar__mobile-service-link">🎤 Public Relations (PR)</a>
+        <a href="/creator-management.html" class="navbar__mobile-service-link">👥 Creator Management</a>
+        <a href="/ugc-user-generated-content.html" class="navbar__mobile-service-link">📲 UGC (User Generated Content)</a>
+        <a href="/community-building.html" class="navbar__mobile-service-link">💬 Community Building</a>
+        <a href="/sports-entertainment-marketing.html" class="navbar__mobile-service-link">🏏 Sports &amp; Entertainment Marketing</a>
+        <a href="/ip-development-management.html" class="navbar__mobile-service-link">🎬 IP Development &amp; Management</a>
+        <a href="/sponsorship-brand-partnerships.html" class="navbar__mobile-service-link">🤝 Sponsorship &amp; Brand Partnerships</a>
+        <a href="/crisis-management-reputation-control.html" class="navbar__mobile-service-link">🛡️ Crisis Management &amp; Reputation Control</a>
+        <a href="/e-commerce-marketplace-management.html" class="navbar__mobile-service-link">🛒 E-Commerce &amp; Marketplace Management</a>
+        <a href="/email-crm-marketing.html" class="navbar__mobile-service-link">📧 Email &amp; CRM Marketing</a>
+        <a href="/localization-regional-marketing.html" class="navbar__mobile-service-link">🌍 Localization &amp; Regional Marketing</a>
+      </div>
+    </div>
+    <a href="/ugc-videos.html" class="navbar__mobile-link">UGC Videos</a>
+    <a href="/creators.html" class="navbar__mobile-link">Creators</a>
+    <a href="/join-as-brand.html" class="navbar__mobile-link">Join As Brand</a>
+    <a href="/join-as-creator.html" class="navbar__mobile-link">Join As Creator</a>
+    <a href="#contact-form" class="btn-primary">Get Started →</a>
+  </div>
+</nav>
+
+  <main id="main">
+    <div id="loadWrap">
+      <div class="spin"></div>
+      <p style="color:var(--muted); font-size:14px;">Loading success story...</p>
+    </div>
+
+    <div id="content" style="display:none;">
+      <header class="hero">
+        <img id="heroImg" src="" alt="" class="hero__img">
+        <div class="hero__overlay"></div>
+        <div class="hero__content">
+          <span class="hero__pill">Success Story</span>
+          <h1 id="csTitle" class="hero__title"></h1>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <div class="cs-card">
+          <div class="cs-section-lbl">The Challenge</div>
+          <div id="csExcerpt" class="cs-excerpt"></div>
+          
+          <div class="cs-divider"></div>
+          
+          <div class="cs-section-lbl">Our Strategy & Results</div>
+          <div id="csBody" class="cs-body-content"></div>
+
+          <div class="cs-cta">
+            <div>
+              <h3>Want similar results?</h3>
+              <p>We'll build a custom performance strategy for your brand.</p>
+            </div>
+            <a href="/#contact-form" class="cs-cta__btn">Get Started →</a>
+          </div>
+        </div>
+      </div>
+
+      <section class="related">
+        <div class="related-inner">
+          <div class="related-hdr">
+            <h2>More Success Stories</h2>
+            <a href="/case-studies.html">View all studies →</a>
+          </div>
+          <div id="relatedGrid" class="related-grid"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const loadWrap = document.getElementById('loadWrap');
+      const content = document.getElementById('content');
+
+      if (!id) {
+        window.location.href = '/case-studies.html';
+        return;
+      }
+
+      try {
+        const [csRes, allRes] = await Promise.all([
+          fetch(`/api/case-studies/${id}`),
+          fetch('/api/case-studies')
+        ]);
+
+        if (!csRes.ok) throw new Error('Not found');
+        const item = await csRes.json();
+        const allItems = await allRes.json();
+
+        // Update DOM
+        document.title = item.title + ' – WeSocializeU';
+        document.getElementById('pgTitle').textContent = item.title + ' – WeSocializeU';
+        document.getElementById('csTitle').textContent = item.title;
+        document.getElementById('csExcerpt').textContent = item.excerpt || '';
+        document.getElementById('csBody').innerHTML = item.body || '<p>No content available.</p>';
+        
+        const heroImg = document.getElementById('heroImg');
+        heroImg.src = item.image_url;
+        heroImg.alt = item.title;
+        heroImg.onload = () => heroImg.classList.add('loaded');
+
+        // Related studies
+        const related = allItems.filter(i => i.id != id).slice(0, 3);
+        const escH = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        
+        document.getElementById('relatedGrid').innerHTML = related.map(i => `
+          <a href="/case-study.html?id=${i.id}" class="rel-card">
+            <div class="rel-card__thumb">
+              <img src="${escH(i.image_url)}" alt="${escH(i.title)}">
+            </div>
+            <div class="rel-card__body">
+              <div class="rel-card__tag">Case Study</div>
+              <h3 class="rel-card__title">${escH(i.title)}</h3>
+              <div class="rel-card__link">View Case →</div>
+            </div>
+          </a>
+        `).join('');
+
+        // Show content
+        loadWrap.style.display = 'none';
+        content.style.display = 'block';
+
+      } catch (err) {
+        loadWrap.innerHTML = `
+          <div class="no-body">
+            <h3>Case Study Not Found</h3>
+            <p>The success story you're looking for might have been moved or deleted.</p>
+            <a href="/case-studies.html" class="btn-primary" style="margin-top:20px; display:inline-block;">Back to Case Studies</a>
+          </div>
+        `;
+      }
+    });
+  </script>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════ -->
+<footer class="footer" role="contentinfo">
+  <div class="footer__inner">
+
+    <!-- Brand -->
+    <div class="footer__brand">
+      <div class="footer__logo">WESOCIALIZE<span style="color:var(--clr-amber)">U</span></div>
+      <p class="footer__tagline">The editorial authority in content strategy, influencer performance, and digital growth.</p>
+      <div class="footer__socials">
+        <!-- Instagram -->
+        <a href="https://instagram.com/wesocializeu" class="footer__social-btn" aria-label="Instagram" target="_blank" rel="noopener">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </a>
+        <!-- LinkedIn -->
+        <a href="https://linkedin.com/company/wesocializeu" class="footer__social-btn" aria-label="LinkedIn" target="_blank" rel="noopener">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+        </a>
+        <!-- Twitter / X -->
+        <a href="https://twitter.com/wesocializeu" class="footer__social-btn" aria-label="Twitter" target="_blank" rel="noopener">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="footer__col">
+      <div class="footer__col-title">Quick Links</div>
+      <ul>
+        <li><a href="/#faq">About Us</a></li>
+        <li><a href="/case-studies.html">Case Studies</a></li>
+        <li><a href="/blogs.html">Blog</a></li>
+        <li><a href="/#contact-form">Contact</a></li>
+        <li><a href="/creators.html">Join as Creator</a></li>
+      </ul>
+    </div>
+
+    <!-- Services -->
+    <div class="footer__col">
+      <div class="footer__col-title">Our Services</div>
+      <ul>
+        <li><a href="/influencer-marketing.html">Influencer Marketing</a></li>
+        <li><a href="/ugc-videos.html">UGC Ads</a></li>
+        <li><a href="/content-video-production.html">Content Production</a></li>
+        <li><a href="/social-media-management.html">Social Media</a></li>
+        <li><a href="/campaign-management.html">Campaign Management</a></li>
+      </ul>
+    </div>
+
+    <!-- Contact -->
+    <div class="footer__col">
+      <div class="footer__col-title">Get In Touch</div>
+      <ul>
+        <li><a href="mailto:hello@wesocializeu.com">hello@wesocializeu.com</a></li>
+        <li><a href="tel:+919999999999">+91 99999 99999</a></li>
+        <li><a href="#">Mumbai, Maharashtra</a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="footer__bottom">
+    <div class="footer__copyright">© 2026 WeSocializeU. All rights reserved.</div>
+    <div class="footer__legal">
+      <a href="/privacy-policy.html">Privacy Policy</a>
+      <a href="/terms-of-service.html">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+<!-- Scroll to top -->
+<button class="scroll-top" id="scrollTop" aria-label="Back to top">
+  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/>
+  </svg>
+</button>
+
+<!-- WhatsApp Sticky -->
+<a href="https://wa.me/919999999999?text=Hi%20WeSocializeU,%20I'm%20interested%20in%20your%20services!" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Chat with us on WhatsApp">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.405-.883-.733-1.476-1.639-1.649-1.937-.173-.298-.019-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+  </svg>
+</a>
+
+<!-- Toast notification -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<!-- Scripts -->
+<script src="/js/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — WeSocializeU</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23F5A623'/><text y='22' x='5' font-family='Arial' font-weight='900' font-size='18' fill='white'>W</text></svg>">
+</head>
+<body>
+<main class="login-page" aria-label="Admin login">
+  <div class="login-card">
+    <div class="login-card__logo" style="display:flex;align-items:center;gap:10px;">
+        <img src="/Logo-01-removebg-preview.png" alt="" style="height:40px;width:auto;" onerror="this.style.display='none'">
+        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:-.5px;color:#fff">WESOCIALIZE<span style="color:#F5A623">U</span></span>
+      </div>
+    <p class="login-card__subtitle">Admin Panel — Authorised Access Only</p>
+
+    <div class="login-card__error" id="loginError" role="alert"></div>
+
+    <form id="loginForm" novalidate autocomplete="on">
+      <label class="adm-label" for="adminUsername">Username</label>
+      <input
+        class="adm-input"
+        id="adminUsername"
+        name="username"
+        type="text"
+        placeholder="admin"
+        autocomplete="username"
+        required
+        spellcheck="false"
+      >
+
+      <label class="adm-label" for="adminPassword">Password</label>
+      <input
+        class="adm-input"
+        id="adminPassword"
+        name="password"
+        type="password"
+        placeholder="••••••••••••"
+        autocomplete="current-password"
+        required
+      >
+
+      <button class="adm-btn-primary" type="submit" id="loginSubmitBtn">Sign In</button>
+    </form>
+
+    <p style="text-align:center;margin-top:20px;font-size:12px;color:#475569;">
+      <a href="/" style="color:#475569;text-decoration:none;">← Back to website</a>
+    </p>
+  </div>
+</main>
+
+<script src="/js/admin.js" defer></script>
+</body>
+</html>
