@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "server/**"
+      "includeFiles": "{server,admin,uploads,service_pages_data.js,*.db}/**"
     }
   },
   "rewrites": [
