@@ -19,6 +19,7 @@ const axios      = require('axios');
 const nodemailer = require('nodemailer');
 const cheerio    = require('cheerio');
 const db         = require('./db');
+const { uploadToSupabaseStorage } = require('./supabase');
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -85,14 +86,7 @@ function isUploadMetadataAllowed(file, allowedMimeTypes, allowedExtensions) {
   );
 }
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, uploadDir) },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const finalExt = ALLOWED_UPLOAD_EXTENSIONS.has(ext) ? ext : (file.mimetype.startsWith('video/') ? '.mp4' : '.jpg');
-    cb(null, `${Date.now()}-${crypto.randomUUID()}${finalExt}`);
-  }
-});
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
@@ -394,7 +388,9 @@ function isUploadedImage(file) {
 }
 
 function readFileHeader(file, length = 64) {
-  if (!file || !file.path) return Buffer.alloc(0);
+  if (!file) return Buffer.alloc(0);
+  if (file.buffer) return file.buffer.subarray(0, length);
+  if (!file.path) return Buffer.alloc(0);
   let fd;
   try {
     fd = fs.openSync(file.path, 'r');
@@ -904,8 +900,8 @@ async function persistRemoteProfileImage(rawImageUrl, referer, prefix = 'profile
   }
 
   const filename = `${prefix}-${Date.now()}-${crypto.randomUUID()}${ext}`;
-  fs.writeFileSync(path.join(uploadDir, filename), buffer);
-  return `/uploads/${filename}`;
+  const publicUrl = await uploadToSupabaseStorage(buffer, contentType, filename);
+  return publicUrl;
 }
 
 // ─── Static Files ───────────────────────────────────────────────────────────
@@ -1452,25 +1448,34 @@ app.delete('/api/platforms/:id', requireAuth, async (req, res) => {
 
 // ─── Utilities API ──────────────────────────────────────────────────────────
 
-app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
+app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   if (!isUploadedImage(req.file)) {
-    removeUploadedFile(req.file);
     return res.status(400).json({ error: 'Please upload a JPG, PNG, WEBP, or GIF image.' });
   }
 
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ success: true, url: imageUrl });
+  try {
+    const url = await uploadToSupabaseStorage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    res.json({ success: true, url });
+  } catch (err) {
+    console.error('Upload error:', err.message);
+    res.status(500).json({ error: 'Failed to upload to storage' });
+  }
 });
 
-app.post('/api/upload-video', requireAuth, upload.single('video'), (req, res) => {
+app.post('/api/upload-video', requireAuth, upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
   if (!isUploadedVideo(req.file)) {
-    removeUploadedFile(req.file);
     return res.status(400).json({ error: 'Please upload an MP4, MOV, WEBM, or M4V video.' });
   }
 
-  res.json({ success: true, url: `/uploads/${req.file.filename}` });
+  try {
+    const url = await uploadToSupabaseStorage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    res.json({ success: true, url });
+  } catch (err) {
+    console.error('Upload video error:', err.message);
+    res.status(500).json({ error: 'Failed to upload video to storage' });
+  }
 });
 
 app.post('/api/scrape-profile', requireAuth, async (req, res) => {
