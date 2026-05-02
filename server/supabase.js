@@ -1,4 +1,3 @@
-const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
 
@@ -8,33 +7,53 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
 
 let supabase = null;
+let supabaseInitError = null;
 
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-  console.warn('[SUPABASE] Missing environment variables for storage. Uploads will fail.');
+function getSupabaseClient() {
+  if (supabase) return supabase;
+  if (supabaseInitError) return null;
+
+  if (!supabaseUrl || !supabaseKey) {
+    supabaseInitError = new Error('Missing environment variables for Supabase storage.');
+    console.warn('[SUPABASE] Missing environment variables for storage. Uploads will fail.');
+    return null;
+  }
+
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(supabaseUrl, supabaseKey);
+    return supabase;
+  } catch (err) {
+    supabaseInitError = err;
+    console.warn('[SUPABASE] Storage client unavailable:', err.message);
+    return null;
+  }
 }
 
 async function ensureBucketExists(bucketName) {
-  const { data: buckets, error } = await supabase.storage.listBuckets();
+  const client = getSupabaseClient();
+  if (!client) throw supabaseInitError || new Error('Supabase client not configured');
+
+  const { data: buckets, error } = await client.storage.listBuckets();
   if (error) {
     console.error('Error listing buckets:', error);
     return;
   }
   
   if (!buckets.find(b => b.name === bucketName)) {
-    const { error: createError } = await supabase.storage.createBucket(bucketName, { public: true });
+    const { error: createError } = await client.storage.createBucket(bucketName, { public: true });
     if (createError) {
       console.error('Error creating bucket:', createError);
     }
   } else {
     // Force bucket to be public if it already exists
-    await supabase.storage.updateBucket(bucketName, { public: true });
+    await client.storage.updateBucket(bucketName, { public: true });
   }
 }
 
 async function uploadToSupabaseStorage(buffer, mimetype, originalName) {
-  if (!supabase) throw new Error('Supabase client not configured');
+  const client = getSupabaseClient();
+  if (!client) throw supabaseInitError || new Error('Supabase client not configured');
 
   const bucketName = 'uploads';
   await ensureBucketExists(bucketName);
@@ -42,7 +61,7 @@ async function uploadToSupabaseStorage(buffer, mimetype, originalName) {
   const ext = originalName ? (originalName.match(/\.[^.]+$/) || [''])[0].toLowerCase() : '';
   const fileName = `${Date.now()}-${crypto.randomUUID()}${ext || (mimetype.startsWith('video/') ? '.mp4' : '.jpg')}`;
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await client.storage
     .from(bucketName)
     .upload(fileName, buffer, {
       contentType: mimetype,
@@ -55,11 +74,13 @@ async function uploadToSupabaseStorage(buffer, mimetype, originalName) {
     throw error;
   }
 
-  const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  const { data: publicUrlData } = client.storage.from(bucketName).getPublicUrl(fileName);
   return publicUrlData.publicUrl;
 }
 
 module.exports = {
-  supabase,
+  get supabase() {
+    return getSupabaseClient();
+  },
   uploadToSupabaseStorage
 };

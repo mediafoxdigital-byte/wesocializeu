@@ -4,6 +4,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const servicePages = require('../service_pages_data');
+const fallbackContent = require('./fallback-content');
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
@@ -587,6 +588,69 @@ function likeSearch(value) {
   return `%${String(value || '').trim()}%`;
 }
 
+function fallbackServiceRows() {
+  return servicePages
+    .map((service, index) => ({
+      id: index + 1,
+      slug: service.slug,
+      title: service.title,
+      icon: service.icon || '',
+      hero_title: service.hero_title,
+      hero_subheading: service.hero_subheading || '',
+      hero_gallery_images: '[]',
+      how_image_url: '',
+      what_heading: '',
+      how_heading: '',
+      how_subtitle: '',
+      diff_heading: '',
+      diff_subtitle: '',
+      use_cases_subtitle: '',
+      faq_subtitle: '',
+      cta_subtitle: '',
+      what_we_do: service.what_we_do || '',
+      how_we_do_it: service.how_we_do_it || '',
+      how_steps_json: '[]',
+      what_makes_us_different: service.what_makes_us_different || '',
+      use_cases_title: service.use_cases_title || '',
+      use_cases: service.use_cases || '',
+      cta: service.cta || '',
+      sort_order: service.sort_order || index + 1,
+      is_active: 1,
+      is_customized: 0,
+      created_at: ''
+    }))
+    .sort((a, b) => Number(a.sort_order || 99) - Number(b.sort_order || 99) || Number(a.id) - Number(b.id));
+}
+
+function useFallbackRows(rows, fallbackRows, label) {
+  if (Array.isArray(rows) && rows.length) return rows;
+  if (adapter.mode !== 'supabase') return rows;
+  if (label) console.warn(`[DB] Supabase returned no ${label}; using bundled fallback content.`);
+  return fallbackRows;
+}
+
+async function selectRowsWithFallback(table, options, fallbackRows, label) {
+  try {
+    const rows = (await adapter.select(table, options)).data;
+    return useFallbackRows(rows, fallbackRows, label);
+  } catch (err) {
+    if (adapter.mode !== 'supabase') throw err;
+    console.warn(`[DB] Could not fetch ${label || table} from Supabase:`, err.message);
+    return fallbackRows;
+  }
+}
+
+async function singleWithFallback(table, options, fallbackRows, predicate, label) {
+  try {
+    const row = await adapter.single(table, options);
+    if (row || adapter.mode !== 'supabase') return row;
+  } catch (err) {
+    if (adapter.mode !== 'supabase') throw err;
+    console.warn(`[DB] Could not fetch ${label || table} from Supabase:`, err.message);
+  }
+  return fallbackRows.find(predicate) || null;
+}
+
 async function countRows(table, options = {}) {
   return (await adapter.select(table, { ...options, columns: 'id', count: true, limit: 1, offset: 0 })).count || 0;
 }
@@ -769,7 +833,12 @@ module.exports = {
 
   async listVideos() {
     await ensureReady();
-    return (await adapter.select('ugc_videos', { order: [{ column: 'id', ascending: false }] })).data;
+    return selectRowsWithFallback(
+      'ugc_videos',
+      { order: [{ column: 'id', ascending: false }] },
+      fallbackContent.videos,
+      'UGC videos'
+    );
   },
 
   async createVideo(payload) {
@@ -790,7 +859,12 @@ module.exports = {
 
   async listCreators() {
     await ensureReady();
-    return (await adapter.select('creators', { order: [{ column: 'id', ascending: false }] })).data;
+    return selectRowsWithFallback(
+      'creators',
+      { order: [{ column: 'id', ascending: false }] },
+      fallbackContent.creators,
+      'creators'
+    );
   },
 
   async createCreator(payload) {
@@ -843,12 +917,23 @@ module.exports = {
 
   async listBlogs() {
     await ensureReady();
-    return (await adapter.select('blogs', { order: [{ column: 'order_idx', ascending: true }] })).data;
+    return selectRowsWithFallback(
+      'blogs',
+      { order: [{ column: 'order_idx', ascending: true }] },
+      fallbackContent.blogs,
+      'blogs'
+    );
   },
 
   async getBlogById(id) {
     await ensureReady();
-    return adapter.single('blogs', { filters: [{ column: 'id', op: 'eq', value: id }] });
+    return singleWithFallback(
+      'blogs',
+      { filters: [{ column: 'id', op: 'eq', value: id }] },
+      fallbackContent.blogs,
+      (blog) => String(blog.id) === String(id),
+      'blog'
+    );
   },
 
   async createBlog(payload) {
@@ -869,12 +954,23 @@ module.exports = {
 
   async listCaseStudies() {
     await ensureReady();
-    return (await adapter.select('case_studies', { order: [{ column: 'order_idx', ascending: true }] })).data;
+    return selectRowsWithFallback(
+      'case_studies',
+      { order: [{ column: 'order_idx', ascending: true }] },
+      fallbackContent.caseStudies,
+      'case studies'
+    );
   },
 
   async getCaseStudyById(id) {
     await ensureReady();
-    return adapter.single('case_studies', { filters: [{ column: 'id', op: 'eq', value: id }] });
+    return singleWithFallback(
+      'case_studies',
+      { filters: [{ column: 'id', op: 'eq', value: id }] },
+      fallbackContent.caseStudies,
+      (caseStudy) => String(caseStudy.id) === String(id),
+      'case study'
+    );
   },
 
   async createCaseStudy(payload) {
@@ -895,21 +991,34 @@ module.exports = {
 
   async listPublicServices() {
     await ensureReady();
-    return (await adapter.select('service_pages', {
-      columns: 'id, slug, title, icon, hero_title, hero_subheading, cta, sort_order',
-      filters: [{ column: 'is_active', op: 'eq', value: 1 }],
-      order: [{ column: 'sort_order', ascending: true }, { column: 'id', ascending: true }]
-    })).data;
+    return selectRowsWithFallback(
+      'service_pages',
+      {
+        columns: 'id, slug, title, icon, hero_title, hero_subheading, cta, sort_order',
+        filters: [{ column: 'is_active', op: 'eq', value: 1 }],
+        order: [{ column: 'sort_order', ascending: true }, { column: 'id', ascending: true }]
+      },
+      fallbackServiceRows().map(({ id, slug, title, icon, hero_title, hero_subheading, cta, sort_order }) => ({
+        id, slug, title, icon, hero_title, hero_subheading, cta, sort_order
+      })),
+      'public services'
+    );
   },
 
   async getPublicServiceBySlug(slug) {
     await ensureReady();
-    return adapter.single('service_pages', {
-      filters: [
-        { column: 'slug', op: 'eq', value: slug },
-        { column: 'is_active', op: 'eq', value: 1 }
-      ]
-    });
+    return singleWithFallback(
+      'service_pages',
+      {
+        filters: [
+          { column: 'slug', op: 'eq', value: slug },
+          { column: 'is_active', op: 'eq', value: 1 }
+        ]
+      },
+      fallbackServiceRows(),
+      (service) => service.slug === slug,
+      'public service'
+    );
   },
 
   async listAdminServices() {
