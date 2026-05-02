@@ -312,7 +312,7 @@ body {
 }
 
 .ugc-showcase-hero {
-  padding: calc(var(--nav-height) + clamp(56px, 7vw, 92px)) 0 clamp(54px, 6vw, 84px);
+  padding: calc(var(--nav-height) + clamp(34px, 4.6vw, 58px)) 0 clamp(34px, 4.4vw, 58px);
   border-bottom: 1px solid rgba(20, 24, 31, 0.08);
 }
 
@@ -365,19 +365,19 @@ body {
 .ugc-showcase-shell {
   position: relative;
   z-index: 1;
-  width: min(1540px, calc(100% - clamp(32px, 7vw, 112px)));
+  width: min(1460px, calc(100% - clamp(32px, 7vw, 112px)));
   margin-inline: auto;
 }
 
 .ugc-showcase-hero .ugc-showcase-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.45fr);
-  gap: clamp(34px, 6vw, 92px);
+  grid-template-columns: minmax(0, 0.88fr) minmax(430px, 0.62fr);
+  gap: clamp(34px, 5vw, 78px);
   align-items: center;
 }
 
 .ugc-showcase-crumbs {
-  margin: 0 0 22px;
+  margin: 0 0 18px;
   color: #7a8798;
   font-size: 12px;
   font-weight: 800;
@@ -393,7 +393,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 9px 13px;
   border-radius: 999px;
   border: 1px solid rgba(245, 166, 35, 0.24);
@@ -417,10 +417,10 @@ body {
 .ugc-showcase-title {
   max-width: 12ch;
   font-family: var(--font-heading);
-  font-size: clamp(54px, 7.8vw, 118px);
+  font-size: clamp(48px, 6.2vw, 92px);
   font-weight: 900;
-  line-height: 0.93;
-  letter-spacing: -0.07em;
+  line-height: 0.96;
+  letter-spacing: -0.06em;
   color: #141820;
 }
 
@@ -429,17 +429,20 @@ body {
 }
 
 .ugc-showcase-subtitle {
-  max-width: 690px;
-  margin-top: 24px;
-  font-size: clamp(17px, 1.35vw, 21px);
-  line-height: 1.72;
+  max-width: 640px;
+  margin-top: 20px;
+  font-size: clamp(16px, 1.15vw, 19px);
+  line-height: 1.66;
   color: #526071;
 }
 
 .ugc-showcase-hero__panel {
   position: relative;
-  min-height: 320px;
-  border-radius: 40px;
+  width: min(100%, 560px);
+  min-height: 350px;
+  aspect-ratio: 1.55;
+  justify-self: center;
+  border-radius: 36px;
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -447,7 +450,9 @@ body {
     radial-gradient(circle at 26% 20%, rgba(255, 255, 255, 0.24), transparent 26%),
     linear-gradient(145deg, #121a2a 0%, #0d1422 55%, #1d3559 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 34px 84px -54px rgba(13, 20, 34, 0.9);
+  box-shadow:
+    0 34px 84px -50px rgba(13, 20, 34, 0.9),
+    0 16px 36px -28px rgba(13, 20, 34, 0.55);
 }
 
 .ugc-showcase-hero__panel::after {
@@ -503,10 +508,10 @@ body {
 .ugc-showcase-stat {
   position: absolute;
   z-index: 2;
-  left: 26px;
-  right: 26px;
-  bottom: 26px;
-  padding: 16px 18px;
+  left: 28px;
+  right: 28px;
+  bottom: 28px;
+  padding: 18px 20px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 24px 52px -34px rgba(0,0,0,0.65);
@@ -525,7 +530,7 @@ body {
   display: block;
   margin-top: 2px;
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 900;
   color: #111827;
 }
