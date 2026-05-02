@@ -126,6 +126,18 @@ function createSqliteAdapter() {
       created_at TEXT   NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS schedule_meetings (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      audience_type TEXT    NOT NULL,
+      name          TEXT    NOT NULL,
+      email         TEXT    NOT NULL,
+      phone         TEXT,
+      service       TEXT,
+      message       TEXT,
+      status        TEXT    NOT NULL DEFAULT 'new',
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS admins (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       username      TEXT NOT NULL UNIQUE,
@@ -755,6 +767,42 @@ module.exports = {
     await adapter.deleteById('leads', id);
   },
 
+  async createScheduleMeeting(payload) {
+    await ensureReady();
+    const row = await adapter.insert('schedule_meetings', payload);
+    return row.id;
+  },
+
+  async listScheduleMeetings({ page = 1, limit = 20, status = '', audienceType = '', search = '' } = {}) {
+    await ensureReady();
+    const filters = [];
+    if (status) filters.push({ column: 'status', op: 'eq', value: status });
+    if (audienceType) filters.push({ column: 'audience_type', op: 'eq', value: audienceType });
+    const or = search
+      ? ['name', 'email', 'phone', 'service', 'message'].map((column) => ({ column, op: 'ilike', value: likeSearch(search) }))
+      : [];
+    const offset = (page - 1) * limit;
+    const result = await adapter.select('schedule_meetings', {
+      filters,
+      or,
+      order: [{ column: 'created_at', ascending: false }],
+      limit,
+      offset,
+      count: true
+    });
+    return { data: result.data, total: result.count || 0, page, limit };
+  },
+
+  async updateScheduleMeetingStatus(id, status) {
+    await ensureReady();
+    await adapter.updateById('schedule_meetings', id, { status });
+  },
+
+  async deleteScheduleMeeting(id) {
+    await ensureReady();
+    await adapter.deleteById('schedule_meetings', id);
+  },
+
   async createCreatorLead(payload) {
     await ensureReady();
     const row = await adapter.insert('creator_leads', payload);
@@ -801,8 +849,11 @@ module.exports = {
       converted,
       brandToday,
       creatorToday,
+      scheduleTotal,
+      scheduleToday,
       recentBrand,
-      recentCreator
+      recentCreator,
+      recentSchedule
     ] = await Promise.all([
       countRows('leads'),
       countRows('creator_leads'),
@@ -810,23 +861,27 @@ module.exports = {
       countRows('leads', { filters: [{ column: 'status', op: 'eq', value: 'converted' }] }),
       countRows('leads', { filters: [{ column: 'created_at', op: 'gte', value: todayKey }] }),
       countRows('creator_leads', { filters: [{ column: 'created_at', op: 'gte', value: todayKey }] }),
+      countRows('schedule_meetings'),
+      countRows('schedule_meetings', { filters: [{ column: 'created_at', op: 'gte', value: todayKey }] }),
       adapter.select('leads', { columns: 'created_at', filters: [{ column: 'created_at', op: 'gte', value: firstChartDay }] }),
-      adapter.select('creator_leads', { columns: 'created_at', filters: [{ column: 'created_at', op: 'gte', value: firstChartDay }] })
+      adapter.select('creator_leads', { columns: 'created_at', filters: [{ column: 'created_at', op: 'gte', value: firstChartDay }] }),
+      adapter.select('schedule_meetings', { columns: 'created_at', filters: [{ column: 'created_at', op: 'gte', value: firstChartDay }] })
     ]);
 
     const chartCounts = new Map();
-    [...recentBrand.data, ...recentCreator.data].forEach((row) => {
+    [...recentBrand.data, ...recentCreator.data, ...recentSchedule.data].forEach((row) => {
       const key = dateKey(row.created_at);
       if (key) chartCounts.set(key, (chartCounts.get(key) || 0) + 1);
     });
 
     return {
-      total: brandTotal + creatorTotal,
-      today: brandToday + creatorToday,
+      total: brandTotal + creatorTotal + scheduleTotal,
+      today: brandToday + creatorToday + scheduleToday,
       newLeads,
       converted,
       brandTotal,
       creatorTotal,
+      scheduleTotal,
       chart: Array.from(chartCounts.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([day, count]) => ({ day, count }))
     };
   },

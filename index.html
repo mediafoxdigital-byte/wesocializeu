@@ -294,6 +294,11 @@
           <input class="contact-form__input" id="lead_name" name="name" type="text" placeholder="Your Full Name" autocomplete="name" required>
           <input class="contact-form__input" id="lead_email" name="email" type="email" placeholder="Business Email Address" autocomplete="email" required>
           <input class="contact-form__input" id="lead_phone" name="phone" type="tel" placeholder="+91 Phone Number" autocomplete="tel">
+          <select class="contact-form__input contact-form__select" id="meeting_audience_type" name="audience_type" required aria-label="Select whether you are a creator or brand">
+            <option value="" selected disabled>You are a...</option>
+            <option value="brand">Brand</option>
+            <option value="creator">Creator</option>
+          </select>
 
           <div>
             <p class="services-label">Services Looking For</p>

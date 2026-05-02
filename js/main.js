@@ -207,6 +207,7 @@ function showToast(msg, type = '') {
       name:    form.querySelector('#lead_name').value.trim(),
       email:   form.querySelector('#lead_email').value.trim(),
       phone:   form.querySelector('#lead_phone').value.trim(),
+      audience_type: form.querySelector('#meeting_audience_type')?.value || '',
       service: selectedServices || form.querySelector('#lead_service')?.value || '',
       message: '',
       _gotcha: form.querySelector('[name="_gotcha"]')?.value || ''
@@ -217,11 +218,16 @@ function showToast(msg, type = '') {
       return;
     }
 
+    if (!payload.audience_type) {
+      showToast('Please select whether you are a creator or a brand.', 'error');
+      return;
+    }
+
     btn.textContent = 'Sending…';
     btn.disabled = true;
 
     try {
-      const res = await fetch('/api/leads', {
+      const res = await fetch('/api/schedule-meetings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -16,6 +16,18 @@ create table if not exists public.leads (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.schedule_meetings (
+  id bigserial primary key,
+  audience_type text not null,
+  name text not null,
+  email text not null,
+  phone text,
+  service text,
+  message text,
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.admins (
   id bigserial primary key,
   username text not null unique,
@@ -130,6 +142,7 @@ create table if not exists public.service_pages (
 );
 
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
+create index if not exists schedule_meetings_created_at_idx on public.schedule_meetings (created_at desc);
 create index if not exists creator_leads_created_at_idx on public.creator_leads (created_at desc);
 create index if not exists ugc_videos_id_idx on public.ugc_videos (id desc);
 create index if not exists creators_id_idx on public.creators (id desc);
@@ -138,6 +151,7 @@ create index if not exists case_studies_order_idx_idx on public.case_studies (or
 create index if not exists service_pages_sort_order_idx on public.service_pages (sort_order asc, id asc);
 
 alter table public.leads enable row level security;
+alter table public.schedule_meetings enable row level security;
 alter table public.admins enable row level security;
 alter table public.ugc_videos enable row level security;
 alter table public.creators enable row level security;
@@ -228,6 +242,28 @@ with check (
       and coalesce(youtube_url, '') = ''
     )
   )
+);
+
+drop policy if exists "public schedule meetings insert" on public.schedule_meetings;
+create policy "public schedule meetings insert"
+on public.schedule_meetings for insert to anon
+with check (
+  status = 'new'
+  and created_at >= now() - interval '5 minutes'
+  and created_at <= now() + interval '5 minutes'
+  and audience_type in ('creator', 'brand')
+  and name is not null
+  and char_length(btrim(name)) between 2 and 120
+  and email is not null
+  and char_length(email) <= 254
+  and email ~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]{2,}$'
+  and (
+    phone is null
+    or phone = ''
+    or phone ~ '^[+]?[0-9]{10,15}$'
+  )
+  and char_length(coalesce(service, '')) <= 200
+  and char_length(coalesce(message, '')) <= 1000
 );
 
 drop policy if exists "public videos select" on public.ugc_videos;

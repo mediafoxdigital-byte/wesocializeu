@@ -33,6 +33,11 @@
         Leads
         <span class="adm-nav__badge" id="navLeadsBadge">0</span>
       </a>
+      <a class="adm-nav__item" data-page="schedule-meetings" href="#" role="button" aria-label="Schedule Meetings">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2zm3-6h4m-4 3h2"/></svg>
+        Schedule Meetings
+        <span class="adm-nav__badge" id="navScheduleMeetingsBadge">0</span>
+      </a>
       <a class="adm-nav__item" data-page="creator-apps" href="#" role="button" aria-label="Creator Applications">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
         Creator Apps
@@ -115,7 +120,7 @@
           <div class="adm-stat-card">
             <div class="adm-stat-card__label">New Today</div>
             <div class="adm-stat-card__number adm-stat-card__number--amber" id="statToday">–</div>
-            <div class="adm-stat-card__change">Brand + Creator today</div>
+            <div class="adm-stat-card__change">All form types today</div>
           </div>
           <div class="adm-stat-card">
             <div class="adm-stat-card__label">Brand Leads</div>
@@ -126,6 +131,11 @@
             <div class="adm-stat-card__label">Creator Apps</div>
             <div class="adm-stat-card__number adm-stat-card__number--green" id="statCreatorTotal">–</div>
             <div class="adm-stat-card__change">Join As Creator forms</div>
+          </div>
+          <div class="adm-stat-card">
+            <div class="adm-stat-card__label">Meetings</div>
+            <div class="adm-stat-card__number" id="statScheduleTotal">–</div>
+            <div class="adm-stat-card__change">Schedule meeting forms</div>
           </div>
         </div>
 
@@ -236,6 +246,52 @@
           <div class="adm-pagination" id="pagination" style="padding:16px 24px;"></div>
         </div>
       </div><!-- /page-leads -->
+
+      <!-- ── Schedule Meetings Page ── -->
+      <div class="adm-page" id="page-schedule-meetings" style="display:none">
+        <div class="adm-filters">
+          <input type="search" id="scheduleMeetingsSearch" class="adm-search" placeholder="🔍  Search by name, email, phone, service, or note..." aria-label="Search schedule meetings">
+          <select id="scheduleMeetingsAudienceFilter" class="adm-select" aria-label="Filter by type">
+            <option value="">All Types</option>
+            <option value="brand">Brand</option>
+            <option value="creator">Creator</option>
+          </select>
+          <select id="scheduleMeetingsStatusFilter" class="adm-select" aria-label="Filter by status">
+            <option value="">All Statuses</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="converted">Converted</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+
+        <div class="adm-card" style="padding:0;overflow:visible;">
+          <div class="adm-card__header" style="padding:20px 24px 0;">
+            <span class="adm-card__title">Schedule Meetings</span>
+            <button class="adm-btn-sm" onclick="exportScheduleMeetingsCSV()" aria-label="Export schedule meetings CSV">Export CSV</button>
+          </div>
+          <div class="adm-table-wrap" style="border:none;">
+            <table class="adm-table" aria-label="Schedule meetings table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Contact</th>
+                  <th>Phone</th>
+                  <th>Service</th>
+                  <th>Details</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="scheduleMeetingsTableBody">
+                <tr><td colspan="8"><div class="adm-empty"><p>Loading...</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="adm-pagination" id="scheduleMeetingsPagination" style="padding:16px 24px;"></div>
+        </div>
+      </div><!-- /page-schedule-meetings -->
 
       <!-- ── UGC Videos Page ── -->
       <div class="adm-page" id="page-videos" style="display:none">

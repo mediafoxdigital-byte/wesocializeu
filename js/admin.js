@@ -158,6 +158,7 @@ async function initDashboard() {
   await loadStats();
   await loadRecentLeads();
   await loadLeads();
+  await loadScheduleMeetings();
   await loadCreatorLeads();
   await loadVideos();
   await loadCreators();
@@ -178,6 +179,7 @@ window.refreshDashboardData = async function() {
   await loadStats();
   await loadRecentLeads();
   await loadLeads(currentPage, qs('#leadsSearch')?.value || '', qs('#leadsStatusFilter')?.value || '');
+  await loadScheduleMeetings(scheduleMeetingsPage, qs('#scheduleMeetingsSearch')?.value || '', qs('#scheduleMeetingsStatusFilter')?.value || '', qs('#scheduleMeetingsAudienceFilter')?.value || '');
   await loadCreatorLeads(1);
   await loadVideos();
   await loadCreators();
@@ -198,6 +200,7 @@ async function loadStats() {
     setText('statToday',        data.today);
     setText('statBrandTotal',   data.brandTotal   ?? data.total);
     setText('statCreatorTotal', data.creatorTotal ?? 0);
+    setText('statScheduleTotal', data.scheduleTotal ?? 0);
 
     renderChart(data.chart);
   } catch (e) { console.error(e); }
@@ -555,6 +558,176 @@ document.getElementById('exportCSVBtn')?.addEventListener('click', () => {
   showToast('Exported!', 'success');
 });
 
+// ── Schedule Meetings ────────────────────────────────────
+let allScheduleMeetings = [];
+let scheduleMeetingsPage = 1;
+const scheduleMeetingsPageSize = 15;
+
+async function loadScheduleMeetings(page = 1, search = '', status = '', audienceType = '') {
+  scheduleMeetingsPage = page;
+  const params = new URLSearchParams({ page, limit: scheduleMeetingsPageSize });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  if (audienceType) params.set('audience_type', audienceType);
+
+  try {
+    const res = await fetch(`/api/schedule-meetings?${params}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    allScheduleMeetings = data.data || [];
+    renderScheduleMeetingsTable(allScheduleMeetings);
+    renderScheduleMeetingsPagination(data.total || 0, page);
+    const badge = document.getElementById('navScheduleMeetingsBadge');
+    if (badge) badge.textContent = data.total || 0;
+  } catch (e) { console.error(e); }
+}
+
+function renderScheduleMeetingsTable(meetings) {
+  const tbody = document.getElementById('scheduleMeetingsTableBody');
+  if (!tbody) return;
+
+  if (!meetings.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="adm-empty"><p>No scheduled meetings found.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = meetings.map((meeting) => {
+    const status = meeting.status || 'new';
+    const audienceType = meeting.audience_type === 'creator' ? 'Creator' : 'Brand';
+    return `
+      <tr data-id="${meeting.id}">
+        <td><span class="adm-nav__badge" style="background:${meeting.audience_type === 'creator' ? '#4f46e5' : '#059669'}">${audienceType}</span></td>
+        <td>
+          <div class="name-cell">${escHtml(meeting.name)}</div>
+          <div class="email-cell">${escHtml(meeting.email)}</div>
+        </td>
+        <td>${escHtml(meeting.phone || '—')}</td>
+        <td class="service-cell">${escHtml(meeting.service || '—')}</td>
+        <td style="max-width:260px;white-space:pre-wrap;font-size:13px;color:var(--adm-muted);line-height:1.4;">${meeting.message ? escHtml(meeting.message) : '—'}</td>
+        <td>${formatDate(meeting.created_at)}</td>
+        <td>
+          <select class="status-badge status-badge--${status} status-select" data-id="${meeting.id}" onchange="updateScheduleMeetingStatus(${meeting.id}, this)">
+            <option value="new" ${status === 'new' ? 'selected' : ''}>NEW</option>
+            <option value="contacted" ${status === 'contacted' ? 'selected' : ''}>CONTACTED</option>
+            <option value="converted" ${status === 'converted' ? 'selected' : ''}>CONVERTED</option>
+            <option value="closed" ${status === 'closed' ? 'selected' : ''}>CLOSED</option>
+          </select>
+        </td>
+        <td>
+          <div class="adm-row-actions">
+            <button class="adm-icon-btn adm-icon-btn--danger" title="Delete" onclick="deleteScheduleMeeting(${meeting.id})">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderScheduleMeetingsPagination(total, page) {
+  const el = document.getElementById('scheduleMeetingsPagination');
+  if (!el) return;
+  const totalPages = Math.ceil(total / scheduleMeetingsPageSize);
+  const startItem = total ? Math.min((page - 1) * scheduleMeetingsPageSize + 1, total) : 0;
+  const endItem = Math.min(page * scheduleMeetingsPageSize, total);
+  const searchVal = qs('#scheduleMeetingsSearch')?.value || '';
+  const statusVal = qs('#scheduleMeetingsStatusFilter')?.value || '';
+  const audienceVal = qs('#scheduleMeetingsAudienceFilter')?.value || '';
+
+  if (!totalPages) {
+    el.innerHTML = `<span class="adm-pagination__info">No scheduled meetings</span>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <span class="adm-pagination__info">Showing ${startItem}–${endItem} of ${total} scheduled meetings</span>
+    <div class="adm-pagination__buttons">
+      ${Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => `
+        <button class="adm-page-btn ${pageNumber === page ? 'active' : ''}" onclick="loadScheduleMeetings(${pageNumber}, decodeURIComponent('${encodeURIComponent(searchVal)}'), decodeURIComponent('${encodeURIComponent(statusVal)}'), decodeURIComponent('${encodeURIComponent(audienceVal)}'))">${pageNumber}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
+window.updateScheduleMeetingStatus = async function(id, selectEl) {
+  const status = selectEl.value;
+  selectEl.className = `status-badge status-badge--${status} status-select`;
+  try {
+    const res = await fetch(`/api/schedule-meetings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) {
+      showToast('Scheduled meeting updated', 'success');
+      await loadStats();
+    } else {
+      showToast('Update failed', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+};
+
+window.deleteScheduleMeeting = async function(id) {
+  if (!confirm('Delete this scheduled meeting?')) return;
+  try {
+    const res = await fetch(`/api/schedule-meetings/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('Scheduled meeting deleted', 'success');
+      await loadScheduleMeetings(scheduleMeetingsPage, qs('#scheduleMeetingsSearch')?.value || '', qs('#scheduleMeetingsStatusFilter')?.value || '', qs('#scheduleMeetingsAudienceFilter')?.value || '');
+      await loadStats();
+    } else {
+      showToast('Delete failed', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+};
+
+window.exportScheduleMeetingsCSV = function() {
+  if (!allScheduleMeetings.length) { showToast('No schedule meetings to export', ''); return; }
+  const headers = ['ID', 'Type', 'Name', 'Email', 'Phone', 'Service', 'Message', 'Status', 'Date'];
+  const csvCell = (value) => {
+    const raw = String(value ?? '');
+    const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
+  const rows = allScheduleMeetings.map((meeting) => [
+    meeting.id,
+    csvCell(meeting.audience_type || ''),
+    csvCell(meeting.name),
+    csvCell(meeting.email),
+    csvCell(meeting.phone || ''),
+    csvCell(meeting.service || ''),
+    csvCell(meeting.message || ''),
+    csvCell(meeting.status || ''),
+    csvCell(meeting.created_at || '')
+  ]);
+  const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `wsu-schedule-meetings-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Schedule meetings exported', 'success');
+};
+
+let scheduleMeetingsSearchDebounce;
+document.getElementById('scheduleMeetingsSearch')?.addEventListener('input', (event) => {
+  clearTimeout(scheduleMeetingsSearchDebounce);
+  scheduleMeetingsSearchDebounce = setTimeout(() => {
+    loadScheduleMeetings(1, event.target.value, qs('#scheduleMeetingsStatusFilter')?.value || '', qs('#scheduleMeetingsAudienceFilter')?.value || '');
+  }, 350);
+});
+
+document.getElementById('scheduleMeetingsStatusFilter')?.addEventListener('change', (event) => {
+  loadScheduleMeetings(1, qs('#scheduleMeetingsSearch')?.value || '', event.target.value, qs('#scheduleMeetingsAudienceFilter')?.value || '');
+});
+
+document.getElementById('scheduleMeetingsAudienceFilter')?.addEventListener('change', (event) => {
+  loadScheduleMeetings(1, qs('#scheduleMeetingsSearch')?.value || '', qs('#scheduleMeetingsStatusFilter')?.value || '', event.target.value);
+});
+
 // ── Creator Applications ─────────────────────────────────
 async function loadCreatorLeads(page = 1, search = '') {
   try {
@@ -658,6 +831,7 @@ function showPage(page) {
   const titles = {
     overview: 'Overview',
     leads: 'Leads Management',
+    'schedule-meetings': 'Schedule Meetings',
     'creator-apps': 'Creator Applications',
     videos: 'UGC Videos',
     creators: 'Creators',
@@ -670,6 +844,7 @@ function showPage(page) {
   if (page === 'blogs') loadBlogs();
   if (page === 'case-studies') loadCaseStudies();
   if (page === 'services') loadServicesAdmin();
+  if (page === 'schedule-meetings') loadScheduleMeetings(1);
   if (page === 'creator-apps') loadCreatorLeads(1);
 }
 

@@ -690,6 +690,19 @@
   box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.12);
 }
 
+.contact-form__select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6B7280 50%),
+    linear-gradient(135deg, #6B7280 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
 .services-label {
   font-family: var(--font-body);
   font-weight: 500;

@@ -6,6 +6,8 @@
    to replace the older permissive public insert policies.
    If public pages are loading empty Supabase data, run
    `20260430_restore_live_public_content.sql` to restore policies and content rows.
+   If the schedule meeting form is being added to an existing project, run
+   `20260502_schedule_meetings.sql` before deploying the updated site.
 3. Set these environment variables in Vercel and in `server/.env` for local work:
 
 ```env

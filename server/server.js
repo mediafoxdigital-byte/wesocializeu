@@ -388,6 +388,14 @@ function normalizeRequiredText(value, label, maxLength = 200, minLength = 2) {
   return text;
 }
 
+function normalizeAudienceType(value) {
+  const audienceType = cleanText(value, 20).toLowerCase();
+  if (!['creator', 'brand'].includes(audienceType)) {
+    throw new Error('Select whether you are a creator or a brand.');
+  }
+  return audienceType;
+}
+
 function isUploadedVideo(file) {
   if (!file) return false;
   return isUploadMetadataAllowed(file, VIDEO_UPLOAD_MIME_TYPES, VIDEO_UPLOAD_EXTENSIONS) && hasVideoFileSignature(file);
@@ -1066,6 +1074,30 @@ async function sendConfirmationEmail(toEmail, type, name) {
   }
 }
 
+async function sendScheduleMeetingEmail(toEmail, audienceType, name) {
+  if (!process.env.SMTP_USER || process.env.SMTP_USER === 'your_email@gmail.com') return;
+  const safeName = escapeHtml(name);
+  const safeType = audienceType === 'creator' ? 'creator' : 'brand';
+
+  try {
+    await transporter.sendMail({
+      from: `"WeSocializeU" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: 'Meeting request received - WeSocializeU',
+      html: `<div style="font-family:sans-serif;max-width:600px;margin:30px auto;border:1px solid #e2e8f0;border-radius:12px;padding:30px;color:#334155;">
+         <h2 style="color:#F5A623;margin-top:0;">Meeting Request Received</h2>
+         <p>Hi ${safeName},</p>
+         <p>Thanks for scheduling a meeting with WeSocializeU as a ${safeType}.</p>
+         <p>Our team will review your details and contact you within 24 hours.</p>
+         <br/>
+         <p>Best,<br/><strong>The WeSocializeU Team</strong></p>
+       </div>`
+    });
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+  }
+}
+
 // ─── API Routes ─────────────────────────────────────────────────────────────
 
 // POST /api/login
@@ -1123,6 +1155,32 @@ app.post('/api/leads', publicFormLimiter, rejectBotTrap, async (req, res) => {
     return res.status(201).json({ success: true, id });
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Invalid lead details' });
+  }
+});
+
+// POST /api/schedule-meetings — public (homepage schedule meeting form)
+app.post('/api/schedule-meetings', publicFormLimiter, rejectBotTrap, async (req, res) => {
+  try {
+    const audienceType = normalizeAudienceType(req.body.audience_type || req.body.audienceType);
+    const name = normalizeRequiredText(req.body.name, 'Full name', 120);
+    const email = normalizeEmailAddress(req.body.email);
+    const phone = normalizePhoneNumber(req.body.phone, false);
+    const service = cleanText(req.body.service, 200);
+    const message = cleanText(req.body.message, 1000);
+
+    const id = await db.createScheduleMeeting({
+      audience_type: audienceType,
+      name,
+      email,
+      phone,
+      service,
+      message
+    });
+
+    sendScheduleMeetingEmail(email, audienceType, name);
+    return res.status(201).json({ success: true, id });
+  } catch (err) {
+    return res.status(400).json({ error: err.message || 'Invalid meeting details' });
   }
 });
 
@@ -1226,6 +1284,46 @@ app.delete('/api/leads/:id', requireAuth, async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to delete lead' });
+  }
+});
+
+// GET /api/schedule-meetings — admin only
+app.get('/api/schedule-meetings', requireAuth, async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, parseInt(req.query.limit) || 20);
+  const status = cleanText(req.query.status, 30);
+  const rawAudienceType = cleanText(req.query.audience_type || req.query.audienceType, 30).toLowerCase();
+  const audienceType = ['creator', 'brand'].includes(rawAudienceType) ? rawAudienceType : '';
+  const search = req.query.search ? cleanText(req.query.search, 120) : '';
+
+  try {
+    return res.json(await db.listScheduleMeetings({ page, limit, status, audienceType, search }));
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch scheduled meetings' });
+  }
+});
+
+// PATCH /api/schedule-meetings/:id — admin only
+app.patch('/api/schedule-meetings/:id', requireAuth, async (req, res) => {
+  const status = cleanText(req.body.status, 30);
+  const allowed = ['new', 'contacted', 'converted', 'closed'];
+  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+  try {
+    await db.updateScheduleMeetingStatus(req.params.id, status);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update scheduled meeting' });
+  }
+});
+
+// DELETE /api/schedule-meetings/:id — admin only
+app.delete('/api/schedule-meetings/:id', requireAuth, async (req, res) => {
+  try {
+    await db.deleteScheduleMeeting(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete scheduled meeting' });
   }
 });
 
