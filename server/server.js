@@ -19,7 +19,7 @@ const axios      = require('axios');
 const nodemailer = require('nodemailer');
 const cheerio    = require('cheerio');
 const db         = require('./db');
-const { uploadToSupabaseStorage, createSignedSupabaseUpload } = require('./supabase');
+const { uploadToSupabaseStorage } = require('./supabase');
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
 try {
@@ -1581,28 +1581,9 @@ app.post('/api/upload', requireAuth, imageUpload.single('image'), async (req, re
 });
 
 app.post('/api/upload/signed-image', requireAuth, async (req, res) => {
-  const originalname = cleanText(req.body.fileName, 180);
-  const mimetype = cleanText(req.body.fileType, 80).toLowerCase();
-  const size = parseInteger(req.body.size, 0, 0, IMAGE_UPLOAD_MAX_BYTES + 1);
-  const file = { originalname, mimetype };
-
-  if (!originalname || !mimetype || !size) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  if (size > IMAGE_UPLOAD_MAX_BYTES) {
-    return res.status(400).json({ error: IMAGE_UPLOAD_MAX_MESSAGE });
-  }
-  if (!isUploadMetadataAllowed(file, IMAGE_UPLOAD_MIME_TYPES, IMAGE_UPLOAD_EXTENSIONS)) {
-    return res.status(400).json({ error: 'Please upload a JPG, PNG, WEBP, or GIF image.' });
-  }
-
-  try {
-    const uploadData = await createSignedSupabaseUpload(mimetype, originalname);
-    res.json({ success: true, ...uploadData });
-  } catch (err) {
-    console.error('Signed image upload error:', err.message);
-    res.status(500).json({ error: 'Failed to prepare storage upload' });
-  }
+  res.status(410).json({
+    error: 'Admin upload was updated. Please refresh the admin page and try again.'
+  });
 });
 
 app.post('/api/upload-video', requireAuth, videoUpload.single('video'), async (req, res) => {

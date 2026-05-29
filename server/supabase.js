@@ -100,36 +100,9 @@ function createStorageFileName(mimetype, originalName) {
   return `${Date.now()}-${crypto.randomUUID()}${ext || (mimetype.startsWith('video/') ? '.mp4' : '.jpg')}`;
 }
 
-async function createSignedSupabaseUpload(mimetype, originalName) {
-  const client = getSupabaseClient();
-  if (!client) throw supabaseInitError || new Error('Supabase client not configured');
-
-  const bucketName = 'uploads';
-  await ensureBucketExists(bucketName);
-
-  const fileName = createStorageFileName(mimetype, originalName);
-  const { data, error } = await client.storage
-    .from(bucketName)
-    .createSignedUploadUrl(fileName);
-
-  if (error) {
-    console.error('Supabase signed upload URL error:', error);
-    throw error;
-  }
-
-  const { data: publicUrlData } = client.storage.from(bucketName).getPublicUrl(fileName);
-  return {
-    signedUrl: data.signedUrl,
-    token: data.token,
-    path: data.path,
-    publicUrl: publicUrlData.publicUrl
-  };
-}
-
 module.exports = {
   get supabase() {
     return getSupabaseClient();
   },
-  uploadToSupabaseStorage,
-  createSignedSupabaseUpload
+  uploadToSupabaseStorage
 };

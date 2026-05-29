@@ -5,6 +5,26 @@
       "includeFiles": "{server,admin,uploads,service_pages_data.js,*.db}/**"
     }
   },
+  "headers": [
+    {
+      "source": "/js/admin.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/admin/dashboard.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
