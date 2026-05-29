@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 function cleanEnv(value) {
-  const text = String(value || '').trim();
+  const text = String(value || '').trim().replace(/^['"]|['"]$/g, '');
   return text && !/^your_|^replace_/i.test(text) ? text : '';
 }
 
