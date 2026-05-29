@@ -42,7 +42,9 @@ function showToast(msg, type = '') {
 }
 
 const ADMIN_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const ADMIN_IMAGE_SERVER_MAX_BYTES = 3.8 * 1024 * 1024;
 const ADMIN_IMAGE_MAX_MESSAGE = 'Upload image of less than 5MB.';
+const ADMIN_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 function validateAdminImageFile(file) {
   if (!file) {
@@ -53,45 +55,80 @@ function validateAdminImageFile(file) {
     showToast(ADMIN_IMAGE_MAX_MESSAGE, 'error');
     return false;
   }
-  if (!String(file.type || '').startsWith('image/')) {
-    showToast('Please select an image file', 'error');
+  if (!ADMIN_IMAGE_TYPES.has(String(file.type || '').toLowerCase())) {
+    showToast('Please upload a JPG, PNG, WEBP, or GIF image.', 'error');
     return false;
   }
   return true;
 }
 
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read selected image'));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not prepare image upload'));
+    }, type, quality);
+  });
+}
+
+async function prepareAdminImageForServer(file) {
+  if (file.size <= ADMIN_IMAGE_SERVER_MAX_BYTES) return file;
+
+  if (String(file.type || '').toLowerCase() === 'image/gif') {
+    throw new Error('Upload image of less than 5MB. Large GIF files are not supported.');
+  }
+
+  const img = await loadImageFromFile(file);
+  const maxSide = 2400;
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+  const height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not prepare image upload');
+  ctx.drawImage(img, 0, 0, width, height);
+
+  for (const quality of [0.82, 0.74, 0.66, 0.58, 0.5]) {
+    const blob = await canvasToBlob(canvas, 'image/webp', quality);
+    if (blob.size <= ADMIN_IMAGE_SERVER_MAX_BYTES) {
+      return new File([blob], (file.name || 'image').replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+    }
+  }
+
+  throw new Error('Upload image of less than 5MB.');
+}
+
 async function uploadAdminImageFile(file) {
   if (!validateAdminImageFile(file)) return null;
 
-  const prepareRes = await fetch('/api/upload/signed-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fileName: file.name || 'image.jpg',
-      fileType: file.type || 'image/jpeg',
-      size: file.size
-    })
-  });
-  const prepareData = await prepareRes.json().catch(() => ({}));
-  if (!prepareRes.ok || !prepareData.success || !prepareData.signedUrl || !prepareData.publicUrl) {
-    throw new Error(prepareData.error || 'Failed to prepare upload');
+  const uploadFile = await prepareAdminImageForServer(file);
+  const formData = new FormData();
+  formData.append('image', uploadFile);
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success || !data.url) {
+    throw new Error(data.error || 'Upload failed');
   }
 
-  const uploadBody = new FormData();
-  uploadBody.append('cacheControl', '3600');
-  uploadBody.append('', file);
-
-  const uploadRes = await fetch(prepareData.signedUrl, {
-    method: 'PUT',
-    headers: { 'x-upsert': 'false' },
-    body: uploadBody
-  });
-  if (!uploadRes.ok) {
-    const errorText = await uploadRes.text().catch(() => '');
-    throw new Error(errorText || 'Failed to upload to storage');
-  }
-
-  return prepareData.publicUrl;
+  return data.url;
 }
 
 function initAdminMobileShell() {
