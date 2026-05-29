@@ -19,7 +19,7 @@ const axios      = require('axios');
 const nodemailer = require('nodemailer');
 const cheerio    = require('cheerio');
 const db         = require('./db');
-const { uploadToSupabaseStorage } = require('./supabase');
+const { uploadToSupabaseStorage, createSignedSupabaseUpload } = require('./supabase');
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
 try {
@@ -29,22 +29,13 @@ try {
 } catch (err) {
   console.warn('Could not create uploads directory (expected on Vercel):', err.message);
 }
-const ALLOWED_UPLOAD_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-  'video/x-m4v',
-  'application/mp4'
-]);
-const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.webm', '.m4v']);
 const IMAGE_UPLOAD_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const IMAGE_UPLOAD_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const VIDEO_UPLOAD_MIME_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'application/mp4']);
 const VIDEO_UPLOAD_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v']);
+const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const VIDEO_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+const IMAGE_UPLOAD_MAX_MESSAGE = 'Upload image of less than 5MB.';
 const UPLOAD_MIME_EXTENSIONS = new Map([
   ['image/jpeg', new Set(['.jpg', '.jpeg'])],
   ['image/png', new Set(['.png'])],
@@ -98,17 +89,31 @@ function isUploadMetadataAllowed(file, allowedMimeTypes, allowedExtensions) {
 }
 
 const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  fileFilter(req, file, cb) {
-    if (!isUploadMetadataAllowed(file, ALLOWED_UPLOAD_MIME_TYPES, ALLOWED_UPLOAD_EXTENSIONS)) {
-      return cb(new Error('File type not supported. Please upload JPG, PNG, WEBP, GIF, MP4, MOV, WEBM, or M4V.'));
+function createUploadMiddleware(allowedMimeTypes, allowedExtensions, maxFileSize, unsupportedMessage) {
+  return multer({
+    storage: storage,
+    limits: { fileSize: maxFileSize },
+    fileFilter(req, file, cb) {
+      if (!isUploadMetadataAllowed(file, allowedMimeTypes, allowedExtensions)) {
+        return cb(new Error(unsupportedMessage));
+      }
+      cb(null, true);
     }
-    cb(null, true);
-  }
-});
+  });
+}
 
+const imageUpload = createUploadMiddleware(
+  IMAGE_UPLOAD_MIME_TYPES,
+  IMAGE_UPLOAD_EXTENSIONS,
+  IMAGE_UPLOAD_MAX_BYTES,
+  'Please upload a JPG, PNG, WEBP, or GIF image.'
+);
+const videoUpload = createUploadMiddleware(
+  VIDEO_UPLOAD_MIME_TYPES,
+  VIDEO_UPLOAD_EXTENSIONS,
+  VIDEO_UPLOAD_MAX_BYTES,
+  'File type not supported. Please upload MP4, MOV, WEBM, or M4V.'
+);
 const app = express();
 app.disable('x-powered-by');
 app.set('json escape', true);
@@ -1557,8 +1562,11 @@ app.delete('/api/platforms/:id', requireAuth, async (req, res) => {
 
 // ─── Utilities API ──────────────────────────────────────────────────────────
 
-app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) => {
+app.post('/api/upload', requireAuth, imageUpload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (req.file.size > IMAGE_UPLOAD_MAX_BYTES) {
+    return res.status(400).json({ error: IMAGE_UPLOAD_MAX_MESSAGE });
+  }
   if (!isUploadedImage(req.file)) {
     return res.status(400).json({ error: 'Please upload a JPG, PNG, WEBP, or GIF image.' });
   }
@@ -1572,7 +1580,32 @@ app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) =>
   }
 });
 
-app.post('/api/upload-video', requireAuth, upload.single('video'), async (req, res) => {
+app.post('/api/upload/signed-image', requireAuth, async (req, res) => {
+  const originalname = cleanText(req.body.fileName, 180);
+  const mimetype = cleanText(req.body.fileType, 80).toLowerCase();
+  const size = parseInteger(req.body.size, 0, 0, IMAGE_UPLOAD_MAX_BYTES + 1);
+  const file = { originalname, mimetype };
+
+  if (!originalname || !mimetype || !size) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  if (size > IMAGE_UPLOAD_MAX_BYTES) {
+    return res.status(400).json({ error: IMAGE_UPLOAD_MAX_MESSAGE });
+  }
+  if (!isUploadMetadataAllowed(file, IMAGE_UPLOAD_MIME_TYPES, IMAGE_UPLOAD_EXTENSIONS)) {
+    return res.status(400).json({ error: 'Please upload a JPG, PNG, WEBP, or GIF image.' });
+  }
+
+  try {
+    const uploadData = await createSignedSupabaseUpload(mimetype, originalname);
+    res.json({ success: true, ...uploadData });
+  } catch (err) {
+    console.error('Signed image upload error:', err.message);
+    res.status(500).json({ error: 'Failed to prepare storage upload' });
+  }
+});
+
+app.post('/api/upload-video', requireAuth, videoUpload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
   if (!isUploadedVideo(req.file)) {
     return res.status(400).json({ error: 'Please upload an MP4, MOV, WEBM, or M4V video.' });
@@ -1880,12 +1913,18 @@ app.put('/api/admin/services/:id', requireAuth, async (req, res) => {
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      if (req.path === '/api/upload') {
+        return res.status(400).json({ error: IMAGE_UPLOAD_MAX_MESSAGE });
+      }
+      return res.status(400).json({ error: 'Upload failed. File is too large.' });
+    }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       return res.status(400).json({ error: 'Unexpected upload field. Please refresh the admin page and try again.' });
     }
     return res.status(400).json({ error: cleanText(err.message, 200) || 'Upload failed' });
   }
-  if (err && /(Only JPG|File type not supported)/i.test(err.message || '')) {
+  if (err && /(Only JPG|Please upload a JPG|File type not supported)/i.test(err.message || '')) {
     return res.status(400).json({ error: cleanText(err.message, 200) || 'File type not supported.' });
   }
   return next(err);

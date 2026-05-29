@@ -41,6 +41,59 @@ function showToast(msg, type = '') {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+const ADMIN_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const ADMIN_IMAGE_MAX_MESSAGE = 'Upload image of less than 5MB.';
+
+function validateAdminImageFile(file) {
+  if (!file) {
+    showToast('Please select a file first', 'error');
+    return false;
+  }
+  if (file.size > ADMIN_IMAGE_MAX_BYTES) {
+    showToast(ADMIN_IMAGE_MAX_MESSAGE, 'error');
+    return false;
+  }
+  if (!String(file.type || '').startsWith('image/')) {
+    showToast('Please select an image file', 'error');
+    return false;
+  }
+  return true;
+}
+
+async function uploadAdminImageFile(file) {
+  if (!validateAdminImageFile(file)) return null;
+
+  const prepareRes = await fetch('/api/upload/signed-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: file.name || 'image.jpg',
+      fileType: file.type || 'image/jpeg',
+      size: file.size
+    })
+  });
+  const prepareData = await prepareRes.json().catch(() => ({}));
+  if (!prepareRes.ok || !prepareData.success || !prepareData.signedUrl || !prepareData.publicUrl) {
+    throw new Error(prepareData.error || 'Failed to prepare upload');
+  }
+
+  const uploadBody = new FormData();
+  uploadBody.append('cacheControl', '3600');
+  uploadBody.append('', file);
+
+  const uploadRes = await fetch(prepareData.signedUrl, {
+    method: 'PUT',
+    headers: { 'x-upsert': 'false' },
+    body: uploadBody
+  });
+  if (!uploadRes.ok) {
+    const errorText = await uploadRes.text().catch(() => '');
+    throw new Error(errorText || 'Failed to upload to storage');
+  }
+
+  return prepareData.publicUrl;
+}
+
 function initAdminMobileShell() {
   const sidebar = document.getElementById('admSidebar');
   const toggle = document.getElementById('admSidebarToggle');
@@ -971,16 +1024,13 @@ window.uploadUgcMedia = async function(type) {
   const file = fileInput.files[0];
   const fileName = (file.name || '').toLowerCase();
   const isVideoFile = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(fileName);
-  if (type === 'thumb' && !file.type.startsWith('image/')) {
-    showToast('Please select an image thumbnail', 'error');
+  if (type === 'thumb' && !validateAdminImageFile(file)) {
     return;
   }
   if (type === 'video' && !isVideoFile) {
     showToast('Please select an MP4, MOV, WEBM, or M4V video', 'error');
     return;
   }
-  const formData = new FormData();
-  formData.append(type === 'video' ? 'video' : 'image', file);
 
   const btn = document.getElementById(type === 'thumb' ? 'thumbUploadBtn' : 'videoUploadBtn');
   const originalText = btn ? btn.textContent : '';
@@ -989,6 +1039,17 @@ window.uploadUgcMedia = async function(type) {
     btn.textContent = 'Uploading...';
   }
   try {
+    if (type === 'thumb') {
+      const url = await uploadAdminImageFile(file);
+      if (!url) return;
+      setUgcMediaPreview('thumb', url);
+      fileInput.value = '';
+      showToast('Uploaded successfully', 'success');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('video', file);
     const uploadUrl = type === 'video' ? '/api/upload-video' : '/api/upload';
     let res = await fetch(uploadUrl, { method: 'POST', body: formData });
     let data = await res.json().catch(() => ({}));
@@ -1012,7 +1073,7 @@ window.uploadUgcMedia = async function(type) {
       showToast(data.error || (res.status === 404 ? 'Upload API not found. Restart the Node server.' : 'Upload failed'), 'error');
     }
   } catch (err) {
-    showToast('Upload failed', 'error');
+    showToast(err.message || 'Upload failed', 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1270,24 +1331,18 @@ window.uploadCreatorImage = async function() {
   if (!fileInput.files.length) {
     showToast('Please select a file first', 'error'); return;
   }
-  const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
 
   const btn = document.getElementById('creatorUploadBtn');
   btn.textContent = 'Uploading...';
   try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('creatorImage').value = data.url;
-      updateCreatorPreview(data.url);
-      showToast('Image uploaded', 'success');
-      switchImageMode('url');
-    } else {
-      showToast(data.error || 'Upload failed', 'error');
-    }
+    const url = await uploadAdminImageFile(fileInput.files[0]);
+    if (!url) return;
+    document.getElementById('creatorImage').value = url;
+    updateCreatorPreview(url);
+    showToast('Image uploaded', 'success');
+    switchImageMode('url');
   } catch (err) {
-    showToast('Upload failed', 'error');
+    showToast(err.message || 'Upload failed', 'error');
   } finally {
     btn.textContent = 'Upload';
   }
@@ -1497,26 +1552,20 @@ window.uploadBlogImage = async function() {
   if (!fileInput || !fileInput.files.length) {
     showToast('Please select a file first', 'error'); return;
   }
-  const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
 
   const btn = document.getElementById('blogUploadBtn');
   btn.textContent = 'Uploading...';
   try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('blogImage').value = data.url;
-      const bp = document.getElementById('blogImagePreview');
-      const img = document.getElementById('blogImagePreviewImg');
-      img.src = data.url;
-      bp.style.display = 'block';
-      showToast('Image uploaded', 'success');
-    } else {
-      showToast(data.error || 'Upload failed', 'error');
-    }
+    const url = await uploadAdminImageFile(fileInput.files[0]);
+    if (!url) return;
+    document.getElementById('blogImage').value = url;
+    const bp = document.getElementById('blogImagePreview');
+    const img = document.getElementById('blogImagePreviewImg');
+    img.src = url;
+    bp.style.display = 'block';
+    showToast('Image uploaded', 'success');
   } catch (err) {
-    showToast('Upload failed', 'error');
+    showToast(err.message || 'Upload failed', 'error');
   } finally {
     btn.textContent = 'Upload';
   }
@@ -1634,26 +1683,20 @@ window.uploadCaseStudyImage = async function() {
   if (!fileInput || !fileInput.files.length) {
     showToast('Please select a file first', 'error'); return;
   }
-  const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
 
   const btn = document.getElementById('csUploadBtn');
   btn.textContent = 'Uploading...';
   try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('csImage').value = data.url;
-      const cp = document.getElementById('csImagePreview');
-      const img = document.getElementById('csImagePreviewImg');
-      img.src = data.url;
-      cp.style.display = 'block';
-      showToast('Image uploaded', 'success');
-    } else {
-      showToast(data.error || 'Upload failed', 'error');
-    }
+    const url = await uploadAdminImageFile(fileInput.files[0]);
+    if (!url) return;
+    document.getElementById('csImage').value = url;
+    const cp = document.getElementById('csImagePreview');
+    const img = document.getElementById('csImagePreviewImg');
+    img.src = url;
+    cp.style.display = 'block';
+    showToast('Image uploaded', 'success');
   } catch (err) {
-    showToast('Upload failed', 'error');
+    showToast(err.message || 'Upload failed', 'error');
   } finally {
     btn.textContent = 'Upload';
   }
@@ -1888,6 +1931,9 @@ window.uploadServiceHeroImage = async function() {
     showToast('Maximum 5 images allowed.', 'error');
     return;
   }
+  if (files.some((file) => !validateAdminImageFile(file))) {
+    return;
+  }
 
   const btn = document.getElementById('serviceHeroUploadBtn');
   if (btn) btn.textContent = 'Uploading...';
@@ -1896,16 +1942,12 @@ window.uploadServiceHeroImage = async function() {
     let uploadedCount = 0;
     let stoppedByError = false;
     for (const file of files) {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!data.success || !data.url) {
+      const url = await uploadAdminImageFile(file);
+      if (!url) {
         stoppedByError = true;
-        showToast(data.error || 'Upload failed', 'error');
         break;
       }
-      currentServiceHeroImages.push(data.url);
+      currentServiceHeroImages.push(url);
       uploadedCount += 1;
     }
     fileInput.value = '';
@@ -1980,18 +2022,15 @@ window.uploadServiceHowStepImage = async function(index) {
     showToast('Please select a file first', 'error');
     return;
   }
-
-  const formData = new FormData();
-  formData.append('image', fileInput.files[0]);
+  if (!validateAdminImageFile(fileInput.files[0])) return;
 
   const btn = fileInput.parentElement?.querySelector('button');
   if (btn) btn.textContent = 'Uploading...';
 
   try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.success && data.url) {
-      currentServiceHowSteps[index].image = data.url;
+    const url = await uploadAdminImageFile(fileInput.files[0]);
+    if (url) {
+      currentServiceHowSteps[index].image = url;
       renderServiceHowSteps();
       const saved = await persistCurrentServiceImages({
         successMessage: 'Step ' + (index + 1) + ' image uploaded and saved',
@@ -1999,10 +2038,10 @@ window.uploadServiceHowStepImage = async function(index) {
       });
       if (!saved) return;
     } else {
-      showToast(data.error || 'Upload failed', 'error');
+      showToast('Upload failed', 'error');
     }
   } catch (err) {
-    showToast('Upload failed', 'error');
+    showToast(err.message || 'Upload failed', 'error');
   } finally {
     if (btn) btn.textContent = 'Upload';
   }
