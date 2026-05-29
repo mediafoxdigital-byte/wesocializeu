@@ -1575,8 +1575,9 @@ app.post('/api/upload', requireAuth, imageUpload.single('image'), async (req, re
     const url = await uploadToSupabaseStorage(req.file.buffer, req.file.mimetype, req.file.originalname);
     res.json({ success: true, url });
   } catch (err) {
-    console.error('Upload error:', err.message);
-    res.status(500).json({ error: 'Failed to upload to storage' });
+    const details = cleanText(err.message, 160);
+    console.error('Upload error:', details || err.message);
+    res.status(500).json({ error: details ? `Storage upload failed: ${details}` : 'Failed to upload to storage' });
   }
 });
 
@@ -1596,8 +1597,9 @@ app.post('/api/upload-video', requireAuth, videoUpload.single('video'), async (r
     const url = await uploadToSupabaseStorage(req.file.buffer, req.file.mimetype, req.file.originalname);
     res.json({ success: true, url });
   } catch (err) {
-    console.error('Upload video error:', err.message);
-    res.status(500).json({ error: 'Failed to upload video to storage' });
+    const details = cleanText(err.message, 160);
+    console.error('Upload video error:', details || err.message);
+    res.status(500).json({ error: details ? `Storage upload failed: ${details}` : 'Failed to upload video to storage' });
   }
 });
 

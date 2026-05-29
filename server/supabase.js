@@ -70,29 +70,58 @@ async function ensureBucketExists(bucketName) {
 }
 
 async function uploadToSupabaseStorage(buffer, mimetype, originalName) {
-  const client = getSupabaseClient();
-  if (!client) throw supabaseInitError || new Error('Supabase client not configured');
+  if (!supabaseUrl || !supabaseKey) {
+    throw supabaseInitError || new Error('Missing SUPABASE_URL or Supabase API key for storage uploads.');
+  }
 
   const bucketName = 'uploads';
-  await ensureBucketExists(bucketName);
-
   const fileName = createStorageFileName(mimetype, originalName);
 
-  const { data, error } = await client.storage
-    .from(bucketName)
-    .upload(fileName, buffer, {
-      contentType: mimetype,
-      cacheControl: '3600',
-      upsert: false
-    });
+  try {
+    return await uploadDirectlyToStorage(bucketName, fileName, buffer, mimetype);
+  } catch (directError) {
+    if (!/bucket/i.test(String(directError.message || ''))) {
+      throw directError;
+    }
 
-  if (error) {
-    console.error('Supabase upload error:', error);
+    await ensureBucketExists(bucketName);
+    return uploadDirectlyToStorage(bucketName, fileName, buffer, mimetype);
+  }
+}
+
+async function uploadDirectlyToStorage(bucketName, fileName, buffer, mimetype) {
+  const uploadUrl = `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/${encodeURIComponent(bucketName)}/${encodeURIComponent(fileName)}`;
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': mimetype,
+      'Cache-Control': '3600',
+      'x-upsert': 'false'
+    },
+    body: buffer
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    const message = parseStorageErrorMessage(errorBody) || `${response.status} ${response.statusText}`;
+    const error = new Error(message);
+    error.status = response.status;
     throw error;
   }
 
-  const { data: publicUrlData } = client.storage.from(bucketName).getPublicUrl(fileName);
-  return publicUrlData.publicUrl;
+  return `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${encodeURIComponent(bucketName)}/${encodeURIComponent(fileName)}`;
+}
+
+function parseStorageErrorMessage(errorBody) {
+  if (!errorBody) return '';
+  try {
+    const parsed = JSON.parse(errorBody);
+    return parsed.message || parsed.error || parsed.msg || '';
+  } catch {
+    return String(errorBody || '').slice(0, 200);
+  }
 }
 
 function createStorageFileName(mimetype, originalName) {
